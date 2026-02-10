@@ -1,6 +1,6 @@
 name: pkglog
 description: Logger for package logging.
-version: 0.1.0
+version: 0.1.1
 repository: https://github.com/vi-k/pkglog
 
 environment:

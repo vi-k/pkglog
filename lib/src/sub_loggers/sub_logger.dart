@@ -1,5 +1,6 @@
 part of '../logger.dart';
 
+/// Base class for sub-loggers.
 sealed class SubLogger {
   final Logger _logger;
 

@@ -13,6 +13,16 @@ typedef LogFunction = void Function(
   StackTrace stackTrace,
 ]);
 
+/// Main class for logging.
+///
+/// You can use [v], [d], [i], [w], [e], [s] to log messages with different
+/// levels.
+///
+/// Example:
+/// ```dart
+/// final logger = Logger('my_package', level: LogLevel.debug);
+/// logger.d('source', 'message');
+/// ```
 final class Logger {
   final String package;
 
@@ -29,16 +39,21 @@ final class Logger {
   LogFunction _e = _noLog;
   LogFunction _s = _noLog;
 
+  /// Creates a new [Logger].
+  ///
+  /// [package] is the name of the package.
+  /// [level] is the minimum log level.
   Logger(this.package, {required LogLevel? level}) {
     _loggers = List.generate(
       LogLevel.values.length,
-      (index) => LevelLogger(this, LogLevel.values[index]),
+      (index) => LevelLogger._(this, LogLevel.values[index]),
       growable: false,
     );
 
     this.level = level;
   }
 
+  /// Returns a new [PreformattingSubLogger] with the given [source].
   PreformattingSubLogger withSource(Object? source) {
     _removeOldSubLoggers();
     final sublogger =
@@ -47,6 +62,8 @@ final class Logger {
     return sublogger;
   }
 
+  /// Returns a new [PreformattingSubLogger] with the given [source] and
+  /// [format].
   PreformattingSubLogger withSourceAndFormatting(
     Object? source,
     String Function(String) format,
@@ -62,6 +79,8 @@ final class Logger {
     return sublogger;
   }
 
+  /// Returns a new [ParameterizedSubLogger] with the given [source] and
+  /// [format].
   ParameterizedSubLogger<T> withSourceAndParam<T extends Object?>(
     Object? source,
     String Function(T param, String message) format,
@@ -77,15 +96,28 @@ final class Logger {
     return sublogger;
   }
 
+  /// Log verbose message.
   LogFunction get v => _v;
+
+  /// Log debug message.
   LogFunction get d => _d;
+
+  /// Log info message.
   LogFunction get i => _i;
+
+  /// Log warning message.
   LogFunction get w => _w;
+
+  /// Log error message.
   LogFunction get e => _e;
+
+  /// Log shout message.
   LogFunction get s => _s;
 
+  /// Returns the [LevelLogger] for the given [level].
   LevelLogger operator [](LogLevel level) => _loggers[level.index];
 
+  /// Sets the minimum log level.
   // ignore: avoid_setters_without_getters
   set level(LogLevel? value) {
     _level = value;
@@ -110,6 +142,7 @@ final class Logger {
     _subLoggers.removeWhere((subLogger) => subLogger.target == null);
   }
 
+  /// Sets the log formatter.
   // ignore: avoid_setters_without_getters
   set format(LogFormatter formatter) {
     for (final logger in _loggers) {
@@ -117,6 +150,7 @@ final class Logger {
     }
   }
 
+  /// Sets the log printer.
   // ignore: avoid_setters_without_getters
   set print(LogPrinter? printer) {
     for (final logger in _loggers) {
@@ -124,6 +158,8 @@ final class Logger {
     }
   }
 
+  /// Logs a message with the given [level], [source], [message], [error] and
+  /// [stackTrace].
   void log(
     LogLevel level,
     Object? source,
@@ -145,9 +181,14 @@ final class Logger {
     StackTrace stackTrace = StackTrace.empty,
   ]) {}
 
+  /// Converts an object to a string.
+  ///
+  /// If the object is a function, it is called and the result is converted to
+  /// a string.
   static String? objToString(Object? obj) =>
       obj == null ? null : '${obj is Object? Function() ? obj() : obj}';
 
+  /// Builds the default log message.
   static String buildDefaultMessage(
     LogLevel level,
     String package,
@@ -163,6 +204,9 @@ final class Logger {
       '${error == null ? '' : ': $error'}'
       '${stackTrace == StackTrace.empty ? '' : '\n$stackTrace'}';
 
+  /// The default log printer.
+  ///
+  /// Prints the text to the console using [print].
   static void defaultPrinter(String text) {
     Zone.current.print(text);
   }

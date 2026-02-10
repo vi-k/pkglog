@@ -1,5 +1,6 @@
 part of '../logger.dart';
 
+/// Function type for parameterized sub-loggers.
 typedef ParameterizedSubLogFunction<T extends Object?> = void Function(
   T param,
   Object? message, [
@@ -7,6 +8,7 @@ typedef ParameterizedSubLogFunction<T extends Object?> = void Function(
   StackTrace stackTrace,
 ]);
 
+/// A sub-logger that takes a parameter and formats the message.
 final class ParameterizedSubLogger<T extends Object?> extends SubLogger {
   final String? _source;
   final String Function(T param, String message) format;
@@ -26,11 +28,22 @@ final class ParameterizedSubLogger<T extends Object?> extends SubLogger {
   })  : _source = Logger.objToString(source),
         super._();
 
+  /// Log verbose message.
   ParameterizedSubLogFunction<T> get v => _v;
+
+  /// Log debug message.
   ParameterizedSubLogFunction<T> get d => _d;
+
+  /// Log info message.
   ParameterizedSubLogFunction<T> get i => _i;
+
+  /// Log warning message.
   ParameterizedSubLogFunction<T> get w => _w;
+
+  /// Log error message.
   ParameterizedSubLogFunction<T> get e => _e;
+
+  /// Log shout message.
   ParameterizedSubLogFunction<T> get s => _s;
 
   @override

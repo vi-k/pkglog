@@ -3,7 +3,7 @@
 > [!WARNING]
 > This README was written by AI.
 
-A lightweight, flexible logger designed for Dart packages.
+A lightweight, flexible logger designed specifically for Dart packages.
 
 `pkglog` provides a simple yet powerful logging abstraction for library
 authors. It allows you to instrument your package with logging capabilities
@@ -72,7 +72,7 @@ stack trace.
 ```dart
 logger.format = (level, package, source, message, error, stackTrace) {
   final timestamp = DateTime.now().toIso8601String();
-  return '$timestamp [${level.shortName.toUpperCase()}] $package: $message';
+  return '$timestamp [${level.shortName}] $package: $message';
 };
 ```
 

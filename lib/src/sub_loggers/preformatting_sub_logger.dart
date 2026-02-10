@@ -1,11 +1,13 @@
 part of '../logger.dart';
 
+/// Function type for preformatting sub-loggers.
 typedef PreformattingSubLogFunction = void Function(
   Object? message, [
   Object? error,
   StackTrace stackTrace,
 ]);
 
+/// A sub-logger that pre-formats messages.
 final class PreformattingSubLogger extends SubLogger {
   final String? _source;
   final String Function(String message)? format;
@@ -25,11 +27,22 @@ final class PreformattingSubLogger extends SubLogger {
   })  : _source = Logger.objToString(source),
         super._();
 
+  /// Log verbose message.
   PreformattingSubLogFunction get v => _v;
+
+  /// Log debug message.
   PreformattingSubLogFunction get d => _d;
+
+  /// Log info message.
   PreformattingSubLogFunction get i => _i;
+
+  /// Log warning message.
   PreformattingSubLogFunction get w => _w;
+
+  /// Log error message.
   PreformattingSubLogFunction get e => _e;
+
+  /// Log shout message.
   PreformattingSubLogFunction get s => _s;
 
   @override
@@ -44,7 +57,9 @@ final class PreformattingSubLogger extends SubLogger {
   }
 
   PreformattingSubLogFunction _logFunction(
-          LogLevel logLevel, LogLevel? minLevel) =>
+    LogLevel logLevel,
+    LogLevel? minLevel,
+  ) =>
       minLevel != null && minLevel.index <= logLevel.index
           ? switch (format) {
               null => _realLog(_logger[logLevel]),

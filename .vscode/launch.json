@@ -1,0 +1,21 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "pkglog minimal",
+            "request": "launch",
+            "type": "dart",
+            "program": "example/pkglog_minimal_example.dart"
+        },
+        {
+            "name": "pkglog",
+            "request": "launch",
+            "type": "dart",
+            "cwd": "example/pkglog_example",
+            "program": "bin/pkglog_example.dart"
+        }
+    ]
+}

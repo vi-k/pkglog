@@ -1,7 +1,7 @@
 part of '../logger.dart';
 
 /// Function type for parameterized sub-loggers.
-typedef ParameterizedSubLogFunction<T extends Object?> = void Function(
+typedef ParameterizedSubLogFunction<T extends Object?> = bool Function(
   T param,
   Object? message, [
   Object? error,
@@ -62,17 +62,18 @@ final class ParameterizedSubLogger<T extends Object?> extends SubLogger {
     LogLevel? minLevel,
   ) =>
       minLevel != null && minLevel.index <= logLevel.index
-          ? _realLog(_logger[logLevel], format)
+          ? _log(_logger[logLevel], format)
           : _noLog;
 
-  static void _noLog(
+  static bool _noLog(
     void param,
     Object? message, [
     Object? error,
     StackTrace stackTrace = StackTrace.empty,
-  ]) {}
+  ]) =>
+      true;
 
-  ParameterizedSubLogFunction<T> _realLog(
+  ParameterizedSubLogFunction<T> _log(
     LevelLogger logger,
     String Function(T param, String message) format,
   ) =>

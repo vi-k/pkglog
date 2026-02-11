@@ -126,6 +126,39 @@ void main() {
     StackTrace.current,
   );
 
+  print('\nDisable logging completely:\n');
+
+  log.level = LogLevel.off;
+
+  log.v('main', 'verbose');
+  log.d('main', 'debug');
+  log.i('main', 'info');
+  log.w('main', 'warning');
+  log.e('main', 'error');
+  log.s('main', 'shout');
+
+  print('\nDisabling the logger using asserts:\n');
+
+  log.level = LogLevel.all;
+
+  assert(log.v('main', 'verbose'));
+  assert(log.d('main', 'debug'));
+  assert(log.i('main', 'info'));
+  assert(log.w('main', 'warning'));
+  assert(log.e('main', 'error'));
+  assert(log.s('main', 'shout'));
+
+  print('\nEnabling the logger using compile environment:\n');
+
+  const logIsEnabled = bool.fromEnvironment('logging');
+
+  logIsEnabled && log.v('main', 'verbose');
+  logIsEnabled && log.d('main', 'debug');
+  logIsEnabled && log.i('main', 'info');
+  logIsEnabled && log.w('main', 'warning');
+  logIsEnabled && log.e('main', 'error');
+  logIsEnabled && log.s('main', 'shout');
+
   print('\nAccess to level logger:\n');
 
   log[LogLevel.info].format =

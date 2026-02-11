@@ -26,7 +26,7 @@ final class LevelLogger {
   final LogLevel _level;
 
   LogFormatter _formatter = Logger.buildDefaultMessage;
-  LogPrinter? _printer = Logger.defaultPrinter;
+  LogPrinter? _printer = Zone.current.print;
 
   /// Creates a new [LevelLogger].
   LevelLogger._(this._logger, this._level);
@@ -43,7 +43,7 @@ final class LevelLogger {
     _printer = printer;
   }
 
-  void _log(
+  bool _log(
     Object? source,
     Object? message, [
     Object? error,
@@ -58,5 +58,7 @@ final class LevelLogger {
       stackTrace,
     );
     _printer?.call(text);
+
+    return true;
   }
 }

@@ -40,15 +40,4 @@ void main() {
   log.w('main', 'warning');
   log.e('main', 'error', Exception('error'), StackTrace.current);
   log.s('main', 'shout', Exception('shout'), StackTrace.current);
-
-  print('\nDisable logging completely:\n');
-
-  log.level = LogLevel.off;
-
-  log.v('main', 'verbose');
-  log.d('main', 'debug');
-  log.i('main', 'info');
-  log.w('main', 'warning');
-  log.e('main', 'error');
-  log.s('main', 'shout');
 }

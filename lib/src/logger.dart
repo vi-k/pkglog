@@ -6,7 +6,7 @@ part 'sub_loggers/sub_logger.dart';
 part 'sub_loggers/preformatting_sub_logger.dart';
 part 'sub_loggers/parameterized_sub_logger.dart';
 
-typedef LogFunction = void Function(
+typedef LogFunction = bool Function(
   Object? source,
   Object? message, [
   Object? error,
@@ -160,7 +160,7 @@ final class Logger {
 
   /// Logs a message with the given [level], [source], [message], [error] and
   /// [stackTrace].
-  void log(
+  bool log(
     LogLevel level,
     Object? source,
     Object? message, [
@@ -174,12 +174,13 @@ final class Logger {
           ? _loggers[logLevel.index]._log
           : _noLog;
 
-  static void _noLog(
+  static bool _noLog(
     Object? source,
     Object? message, [
     Object? error,
     StackTrace stackTrace = StackTrace.empty,
-  ]) {}
+  ]) =>
+      true;
 
   /// Converts an object to a string.
   ///
@@ -203,11 +204,4 @@ final class Logger {
       ' $message'
       '${error == null ? '' : ': $error'}'
       '${stackTrace == StackTrace.empty ? '' : '\n$stackTrace'}';
-
-  /// The default log printer.
-  ///
-  /// Prints the text to the console using [print].
-  static void defaultPrinter(String text) {
-    Zone.current.print(text);
-  }
 }

@@ -1,24 +1,140 @@
 # pkglog
 
-> [!WARNING]
-> This README was written by AI.
+Принципиально минималистичный логер для библиотек.
 
-A lightweight, flexible logger designed specifically for Dart packages.
+По сути, я просто оформил в виде отдельного пакета код, который кочует из
+одной моей библиотеки в другую. Возможно, большинство библиотек не нуждаются
+в логерах. Но в некоторых случаях, когда библиотека выполняет какие-то сложные
+асинхронные операции, где важна точная работа со стримами, асинхронными
+генераторами, фьючами, где легко пропустить асинхронные ошибки, очень сложно
+без логера отлаживать код. Но и затаскивать в библиотеку один из существующих
+мощных логеров для приложений я не хотел. Для отладки пакета они обычно
+слишком многословны и перегружены функциями, которые библиотеке не нужны.
 
-`pkglog` provides a simple yet powerful logging abstraction for library
-authors. It allows you to instrument your package with logging capabilities
-while giving the consumer of your package full control over how those logs are
-handled, filtered, and formatted.
+Я с большими сомнениями решил вынести код логера в отдельный пакет, т.к.
+понимаю, что любая дополнительная зависимость для пакета - это риск. Но надеюсь
+плюсы использования `pkglog` перевесят минусы.
 
-## Features
+## Why?
 
-- **Zero configuration defaults**: Works out of the box with `print`.
-- **Granular control**: Configure logging levels per logger.
-- **Flexible formatting**: Custom formatters for messages.
-- **Sub-loggers**: Create context-aware loggers with bound sources or
-  parameters.
-- **Efficient**: Log messages are not evaluated if the log level is not enabled.
-- **Safe**: Handles exceptions during logging gracefully.
+Итак, суть логера в том, что бы легко включить его для отладки и тестирования
+библиотеки, но при этом так же легко выключить для предоставления
+пользователям.
+
+И если логер выключен, то вызов любой функции логирования не должен ничего
+делать. Не должен даже вычислять параметры, которые передаются в функцию. Для
+логера недопустимо, что бы вызов:
+
+```dart
+log.i('main', 'info');
+```
+
+раскрывался под капотом во что-то подобное:
+
+```dart
+void i(String package, String message) {
+  if (level <= LogLevel.info) {
+    print(format(LogLevel.info, package, message));
+  }
+}
+```
+
+Да, при отключенном логере в консоль ничего не будет выведено, но функция
+всё равно выполнится и её параметры вычислятся. А это всё потеря
+производительности.
+
+В идеале при выключении логера код логирования вообще должен исчезнуть, что бы
+он не влиял никак на производительность приложения. Но такое возможно только
+при использовании assert'ов:
+
+```dart
+assert(() {
+  log.i('main', 'info');
+  return true;
+}());
+```
+
+или констант:
+
+```dart
+const logIsEnabled = bool.fromEnvironment('logging');
+if (logIsEnabled) {
+  log.i('main', 'info');
+}
+```
+
+В обоих случаях при отключенном логере код будет проигнорирован компилятором.
+Оба способа можно и нужно применять в рабочем коде, хотя они сильно
+загромождают код.
+
+`pkglog` предоставляет небольшое удобство для использования этих вариантов,
+немного уменьшая бойлерплейт:
+
+```dart
+final log = Logger('pkglog', level: LogLevel.all);
+
+// ...
+
+assert(log.i('main', 'info'));
+```
+
+и:
+
+```dart
+const logIsEnabled = bool.fromEnvironment('logging');
+
+// ...
+
+logIsEnabled && log.d('main', 'debug') && log.i('main', 'info');
+```
+
+Но, конечно, нам хотелось бы иметь возможность просто написать где-то:
+
+```dart
+log.isEnabled = false;
+```
+
+И дальше использовать логер без бойлерплейта. Чтобы всё делалось само под
+капотом:
+
+```dart
+log.i('main', 'info');
+```
+
+При таком использовании код не может быть удалён при выключении логера, но
+`pkglog` подставляет вместо реальной функции логирования пустую
+функцию-заглушку. Это не так эффективно, как удаление кода, но всё же лучше,
+чем ничего.
+
+Но вызова функции-заглушки недостаточно для оптимизации. Поэтому что параметры,
+которые мы будем передавать в функцию, если это не просто константные строки,
+всё равно будут вычислены:
+
+```dart
+log.i('$MyClass#${shortHash(this)}', 'Request: $request');
+```
+
+Избежать вычисления параметров можно, передав в функцию не готовые строки, а
+функции, которые возвращают строки:
+
+```dart
+log.i(() => '$MyClass#${shortHash(this)}', () => 'Request: $request');
+```
+
+В этом случае, если логирование отключено, функции не будут вызваны и ненужные
+операции не будут выполнены.
+
+Можно использовать такой вариант не только для отложенной передачи параметров,
+но и как скоуп, который будет полностью отключен при выключении данного уровня
+логирования:
+
+```dart
+log.d('main', () {
+  final response = jsonDecode(json) as Map<String, Object?>;
+  final good = analyze(response);
+  return 'Response: ${good ? 'good response' : 'bad response'}';
+});
+```
 
 ## Usage
 
@@ -31,96 +147,377 @@ or final instance to reuse it throughout your package.
 import 'package:pkglog/pkglog.dart';
 
 // Create a logger for your package
-final logger = Logger('my_package', level: LogLevel.all);
+final log = Logger('my_package', level: LogLevel.shout);
 
 void main() {
-  logger.v('Verbose message');
-  logger.d('Debug message');
-  logger.i('Info message');
-  logger.w('Warning message');
-  logger.e('Error message');
-  logger.s('Shout message');
+  log.v('Verbose message');
+  log.d('Debug message');
+  log.i('Info message');
+  log.w('Warning message');
+  log.e('Error message');
+  log.s('Shout message');
 }
 ```
 
-### Log Levels
-
-You can control which messages are logged by setting the `level`. The available levels are:
-*   `verbose` (v)
-*   `debug` (d)
-*   `info` (i)
-*   `warning` (w)
-*   `error` (e)
-*   `shout` (s)
-
-To disable logging, set the level to `LogLevel.off`.
+Please note that by default, only critical errors are logged in the logger.
+This is the correct setting when developing a package. In your case, it may even
+be necessary to disable the logger completely: `LogLevel.off`. Enable other
+logging levels only in your tests and examples.
 
 ```dart
-// Only show warnings and above
-logger.level = LogLevel.warning;
-
-logger.i('This will not be printed');
-logger.w('This will be printed');
+log.level = LogLevel.all;
 ```
 
-### Custom Formatting
+### Performance
 
-You can define how messages are formatted and printed. The formatter receives
-the level, package name, source (optional), message, error (optional), and
-stack trace.
+Если вашему пакету важна производительность, оберните вызовы функций
+логирования в assert'ы:
 
 ```dart
-logger.format = (level, package, source, message, error, stackTrace) {
-  final timestamp = DateTime.now().toIso8601String();
-  return '$timestamp [${level.shortName}] $package: $message';
+assert(log.v('main', 'Verbose message'));
+assert(log.d('main', 'Debug message'));
+assert(log.i('main', 'Info message'));
+assert(log.w('main', 'Warning message'));
+assert(log.e('main', 'Error message'));
+assert(log.s('main', 'Shout message'));
+```
+
+или используйте константу:
+
+```dart
+const logIsEnabled = bool.fromEnvironment('logging');
+logIsEnabled && log.d('main', 'Debug message') && log.i('main', 'Info message');
+```
+
+Это позволит компилятору удалить все вызовы логирования в релизной сборке.
+
+### Log levels
+
+Если вы используете `pkglog` только для собственной отладки своего пакета,
+можете использовать функции `v`, `d`, `i`, `w`, `e`, `s` так, как вам и только
+вам удобно.
+
+Но если ваше логирование может быть полезным для разработчика, использующего
+ваш пакет (дальше будем называть его пользователем), то рассмотрите
+следуюшие рекомендации:
+
+`v` - **ваша** отладка. То, что точно не нужно видеть пользователю пакета.
+      Этот уровень обычно характеризуется большим кол-вом сложной, очень
+      специфичной информации, которая может быть понятна только в контексте
+      **вашей** разработки. Точно не стоит загружать ею польщователя.
+
+`d` - отладочная информация для пользователя, которая может пригодиться ему,
+      если что-то идёт не так в **его** коде при использовании **вашего**
+      пакета. Как и предыдущий, это тоже уровень отладки, но на языке, понятном
+      пользователю. Вы сами решаете, что, когда и в каком виде может быть
+      полезно пользователю. Главное здесь понять, что этот уровень логирования
+      пользователь включит только, когда что-то пойдёт не так. Но если он
+      включил, значит он готов разбираться с деталями.
+
+`i` - важная информация для пользователя: основные события нормальных и
+      ожидаемых им процессов: в **его** коде при использовании **вашего**
+      пакета. Этот уровень логирования рассчитан на то, что работа вашего
+      пакета действительно важна пользователю, что по вашим логам он будет
+      сверять ход выполнения и собственных процессов. Если такой информации
+      ваш пакет не даёт, не используйте этот уровень. А если предоставляете, то
+      помните, что это не отладочная информация, т.е. пользователь не готов
+      к глубокому её анализу. Соответственно, она должна быть максимально
+      простой, понятной и полезной для пользователя.
+
+`w` - предупреждения: неожиданные события, связанные с кодом разработчика:
+      в **его** коде при использовании **вашего** пакета! Используйте этот
+      уровень, когда пользователь, на ваш взгляд, делает что-то не так, но в
+      целом ваш пакет может продолжить нормально функционировать. Например,
+      логика подразумевала предоставление данных от пользователя, а он их не
+      предоставил, и вы переключились на fallback значение.
+
+`e` - ошибки: нештатные события, связанные с кодом разработчика: в **его**
+      коде при использовании **вашего** пакета! Используйте там, где произошла
+      ошибка, но не критический сбой. Возможно, вы перейдёте на fallback
+      решение, или откатитесь назад, или сообщите пользователю об ошибке и
+      будете ждать его дальнейших действий. Важно, что жизнь на этом не
+      останавливается и у пользователь есть выход. Например, отсутствие сети
+      или сбой авторизации.
+
+`s` - критические ошибки, связанные с **вашим** кодом. Подразумевается, что
+      дальнейшая работа невозможна. И если даже пакет продолжает
+      функционировать, то вы уже не гарантируете корректной работы. Для пакета
+      это, скорее всего, уровень появления последующего `issue`. Если у вас
+      есть такой уровень логирования, то, на мой взгляд, при отладке и
+      тестировании он никогда не должен отключаться. Но такое логирование мало
+      полезно в релизной сборке, и поэтому лучше рассмотрите использование
+      исключений или `FlutterError.reportError`, или совместное их
+      использование.
+
+## Custom formatting and printing
+
+По умолчанию `pkglog` использует функцию `print` для вывода логов и форматирует
+сообщения в следующем виде:
+
+```
+[l(evel)] package | source | message: error
+stacktrace
+```
+
+Скорее всего, для разработки пакета этого будет достаточно. Но если разработчик
+хочет скорректировать лог, добавить данные или предоставить возможность
+пользователю пакета изменить форматирование или способ вывода, то это можно
+сделать, установив собственные методы `format` и `print`.
+
+```dart
+log.format = (level, package, source, message, error, stacktrace) {
+  return
+      '${DateTime.now()} [${level.shortName}] $package |'
+      '${source == null ? '' : ' $source |'}'
+      ' $message'
+      '${error == null ? '' : ': $error'}'
+      '${stackTrace == StackTrace.empty ? '' : '\n$stackTrace'}';
 };
+
+log.print = stderr.writeln;
 ```
 
-You can also customize the printer (defaults to `print`):
+`source` и `message` придут в функцию уже преобразованными в строку. Если
+`source` был `null`, то он останется `null`. Но если `message` был `null`, то
+он превратится в пустую строку. По этой причине я не рекомендую использовать
+`message` для передачи данных, которые могут быть `null`. Это сделано
+специально, чтобы вы написали сообщение, а не просто отправили данные без
+пояснений:
 
 ```dart
-logger.print = (text) => stderr.writeln(text);
+log.i('main', () => 'Data received: $data');
 ```
 
-### Sub-loggers
+`stackTrace` никогда не равен `null`. Но это потому, что он может быть пустым.
+Если вы его не указали при логировании, то в `format` придёт
+`StackTrace.empty`.
 
-Sub-loggers allow you to create loggers that are attached to a specific source
-or context, inheriting the configuration of the parent logger.
-
-#### With Source
-
-Use `withSource` to create a logger that automatically tags messages with
-a source name.
+Функцию печати сообщения можно разместить и внутри `format`, а `print`
+отключить:
 
 ```dart
-final dbLogger = logger.withSource('Database');
-dbLogger.i('Connection established');
-// Output: [i] my_package | Database | Connection established
+log.format = (level, package, source, message, error, stacktrace) {
+  final text = Logger.buildDefaultMessage(
+    level, package, source, //
+    message, error, stacktrace,
+  );
+  final out = level.index >= LogLevel.error.index ? stderr : stdin;
+  out.writeln(text);
+  return '';
+};
+
+log.print = null;
 ```
 
-#### Pre-formatting
-
-Use `withSourceAndFormatting` to apply specific formatting logic to messages
-from a sub-logger.
+С помощью `Logger.format` и `Logger.print` настраивается общий вывод для всех
+уровней логирования. Но можно настроить каждую уровень логирования отдельно:
 
 ```dart
-final jsonLogger = logger.withSourceAndFormatting(
-  'JSON',
-  (message) => 'JSON -> $message',
+log.print = stdout.writeln;
+log[LogLevel.error].print = stderr.writeln;
+log[LogLevel.shout].print = stderr.writeln;
+```
+
+> [!IMPORTANT]
+> Разумеется, можно использовать любой другой способ вывода. Например,
+> отправлять логи в файл, в сеть и т.д. Но `pkglog` не разруливает асинхронный
+> код! Если вам нужна такая возможность, то лучше рассмотрите какой-нибудь
+> другой логгер, который умеет это делать, или реализуйте асинхронность
+> самостоятельно. Но не забудьте, что обычного добавления `async` вашей функции
+> `print` не будет достаточно. `pkglog` не будет ждать завершения асинхронных
+> вызовов, и события начнут приходить параллельно. Сила `pkglog` в максимальной
+> простоте и эффективности, а не в широкой функциональности. `pkglog`
+> сознательно не работает с асинхронным кодом.
+
+
+## Sub-loggers
+
+Все функции логирования в `pkglog` принимают помимо самого сообщения параметр
+`source`, чтобы указать источник лога. Например, имя класса, имя функции,
+имя метода и т.д. Соответственно, передавать это значение необходимо в каждую
+функцию логирования:
+
+```dart
+log.d('$MyClass', 'debug');
+log.i('$MyClass', 'info');
+log.w('$MyClass', 'warning');
+```
+
+В какой-то момент это может надоесть и появится разумное желание создать
+отдельную функцию, в которой `source` будет подставляться автоматически:
+
+```dart
+void _d(Object? message) => log.d('source', message);
+void _i(Object? message) => log.i('source', message);
+void _w(Object? message) => log.w('source', message);
+
+_d('debug');
+_i('info');
+_w('warning');
+```
+
+Но помимо того, что это лишний код, здесь ещё и лишний вызов функции:
+логирование может быть отключено, но `_d` при запуске всегда вызовет `log.d`.
+Для тех, кто думает о производительности, это важный момент.
+
+В `pkglog` есть возможность создать sub-logger, в котором нет этой проблемы:
+
+```dart
+final _log = log.withSource('$MyClass');
+
+_log.d('debug');
+_log.i('info');
+_log.w('warning');
+
+// [d] pkglog | MyClass | debug
+// [i] pkglog | MyClass | info
+// [w] pkglog | MyClass | warning
+```
+
+Когда логирование отключено, `_log.d` превратится в пустую функцию-заглушку.
+Если же включено, то под капотом будет вызвана нужная функция логирования
+с подставленным значением `source`.
+
+Таким же образом можно сделать дополнительное форматирование сообщения:
+
+```dart
+final sw = Stopwatch()..start();
+
+//...
+
+final _log = log.withSourceAndFormatting(
+  'event processing',
+  (message) => '${sw.elapsed} | $message',
 );
+
+_log.i('info');
+
+// [i] pkglog | event processing | 0:00:01.234567 | info
 ```
 
-#### Parameterized
-
-You can create loggers that accept a typed parameter for structured logging.
-This is useful for logging events related to specific IDs or objects.
+или форматирование с передаваемым пользователем типизированным параметром:
 
 ```dart
-final requestLogger = logger.withSourceAndParam<int>(
-  'Request',
-  (id, message) => '[$id] $message',
+final _log = log.withSourceAndParam<String>(
+  '$MyClass',
+  (method, message) => '$method | $message',
 );
 
-requestLogger.i(101, 'Processing started');
-// Output: [i] my_package | Request | [101] Processing started
+_log.i('dispose', 'info');
+
+// [i] pkglog | MyClass | dispose | info
+```
+
+## Package user interaction
+
+### Настройка логирования пользователем
+
+Предоставьте пользователю самому решать, какие уровни логирования ему нужны,
+а какие нет. Но и не усложняйте ему жизнь, предоставляя прямой доступ
+к логгеру. Не экспортируйте `pkglog` из своего пакета и не вынуждайте
+разработчика добавлять ещё одну зависимость в своё приложение. Экспортирование
+`pkglog` усложнит жизнь не только пользователю, но и вам. Проксируйте
+любые изменения. Например, так:
+
+```dart
+abstract final class MyPackageConfig {
+  static logEnabled get => _logEnabled;
+  static bool _logEnabled = false;
+  static set logEnabled(bool enabled) {
+    _logEnabled = enabled;
+    log.level = enabled ? LogLevel.debug : LogLevel.error;
+  }
+}
+```
+
+Если вам нужно предоставить пользователю несколько уровней логирования,
+то создайте собственные уровни:
+
+```dart
+enum MyPackageLogLevel {
+  debug,
+  info,
+  error,
+  off;
+}
+
+// ...
+
+abstract final class MyPackageConfig {
+  static MyPackageLogLevelLogLevel get level => _level;
+  static MyPackageLogLevel _level = MyPackageLogLevel.off;
+  static set level(MyPackageLogLevel level) {
+    _level = level;
+    log.level = switch (level) {
+      MyPackageLogLevel.debug => LogLevel.debug,
+      MyPackageLogLevel.info => LogLevel.info,
+      MyPackageLogLevel.error => LogLevel.error,
+      MyPackageLogLevel.off => LogLevel.off,
+    };
+  }
+}
+
+// ...
+
+final log = Logger('my_package', level: LogLevel.off);
+```
+
+То же самое сделайте с возможностью настроить пользователем свой `format` и
+свой `print`, если в этом есть необходимость.
+
+> [!TIP]
+> С одной стороны, обычно пакеты не заморачиваются с настройкой логирования.
+> И вы тоже можете смело избежать этого. С другой стороны, некоторые пакеты
+> сильно засоряют консоль своими логами, не давая возможности их отключить.
+> И за это их ненавидишь.
+
+Возможно ваш случай из тех, где логирование является важной частью функционала
+вашего пакета. И пользователь, используя его, захочет встроить ваши логи в свой
+собственный поток логирования, чтобы и внешне он не выбивался из общего стиля.
+
+Обратите внимание, как в [pkglog_example](https://github.com/vi-k/pkglog/tree/main/example/pkglog_example)
+реализована идея цветного оформления логов с помощью пакета
+[ansi_escape_codes](https://pub.dev/packages/ansi_escape_codes):
+
+```dart
+import 'package:ansi_escape_codes/ansi_escape_codes.dart' as ansi;
+import 'package:pkglog/pkglog.dart';
+
+for (final level in LogLevel.values) {
+  final printer = ansi.AnsiPrinter(
+    ansiCodesEnabled: !Platform.isIOS,
+    defaultState: ansi.SgrPlainState(
+      foreground: switch (level) {
+        LogLevel.verbose => const ansi.Color256(ansi.Colors.gray8),
+        LogLevel.debug => const ansi.Color256(ansi.Colors.gray12),
+        LogLevel.info => const ansi.Color256(ansi.Colors.rgb345),
+        LogLevel.warning => const ansi.Color256(ansi.Colors.rgb440),
+        LogLevel.error => const ansi.Color256(ansi.Colors.rgb400),
+        LogLevel.shout => const ansi.Color256(ansi.Colors.rgb550),
+      },
+      background: switch (level) {
+        LogLevel.shout => const ansi.Color256(ansi.Colors.rgb300),
+        _ => null,
+      },
+    ),
+  );
+
+  log[level].print = printer.print;
+}
+```
+
+Возможно, что-то подобное захочет сделать и пользователь вашего пакета. Вам
+самому делать такое в своём пакете вряд ли может понадобиться (хотя и не
+исключено), но дать возможность пользователю сделать это самостоятельно, если
+ваши логи для него важны - это хорошая идея.
+
+### Экспорт логера
+
+Для удобства использования пусть ссылка на ваш логер хранится в глобальной
+переменной. Но не включайте её в экспорт. А если она находится в общем файле,
+обязательно скройте её при экспорте:
+
+```dart
+// my_package.dart:
+export 'src/my_package.dart' hide log;
 ```

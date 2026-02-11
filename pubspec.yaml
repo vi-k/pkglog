@@ -1,6 +1,6 @@
 name: pkglog
-description: A logger designed specifically for Dart packages.
-version: 0.1.1
+description: A fundamentally minimalistic package providing logging functions to libraries.
+version: 0.1.2
 repository: https://github.com/vi-k/pkglog
 
 topics:

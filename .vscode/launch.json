@@ -16,6 +16,21 @@
             "type": "dart",
             "cwd": "example/pkglog_example",
             "program": "bin/pkglog_example.dart"
+        },
+        {
+            "name": "pkglog test asserts (enabled)",
+            "request": "launch",
+            "type": "dart",
+            "program": "test/pkglog_test_asserts.dart",
+            "args": [
+                "--enable-asserts"
+            ]
+        },
+        {
+            "name": "pkglog test asserts (disabled)",
+            "request": "launch",
+            "type": "dart",
+            "program": "test/pkglog_test_asserts.dart"
         }
     ]
 }

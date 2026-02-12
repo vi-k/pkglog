@@ -3,6 +3,8 @@ import 'dart:io';
 import 'package:ansi_escape_codes/ansi_escape_codes.dart' as ansi;
 import 'package:pkglog/pkglog.dart';
 
+class MyClass {}
+
 void main() {
   var log = Logger('pkglog', level: LogLevel.all);
 
@@ -17,12 +19,11 @@ void main() {
 
   print('\nCustom formatting:\n');
 
-  log.format = (level, package, source, message, error, stackTrace) =>
+  log.format = (level, package, source, message, error) =>
       '[${level.shortName}] $package | ${DateTime.now()} |'
       '${source == null ? '' : ' $source |'}'
       ' $message'
-      '${error == null ? '' : ': $error'}'
-      '${stackTrace == StackTrace.empty ? '' : '\n$stackTrace'}';
+      '${error == null ? '' : ': $error'}';
 
   log.v('main', 'verbose');
   log.d('main', 'debug');
@@ -62,40 +63,10 @@ void main() {
   log.e('main', 'error');
   log.s('main', 'shout');
 
-  print('\nHard formatting:\n');
+  print('\nDeferred parameter computation:\n');
 
-  log.level = LogLevel.verbose;
+  log.level = LogLevel.info;
   var counter = 0;
-
-  log.v(
-    () => 'main (#${++counter})', // counter=1
-    () => 'verbose (#${++counter})', // counter=2
-  );
-  log.d(
-    () => 'main (#${++counter})', // counter=3
-    () => 'debug (#${++counter})', // counter=4
-  );
-  log.i(
-    () => 'main (#${++counter})', // counter=5
-    () => 'info (#${++counter})', // counter=6
-  );
-  log.w(
-    () => 'main (#${++counter})', // counter=7
-    () => 'warning (#${++counter})', // counter=8
-  );
-  log.e(
-    () => 'main (#${++counter})', // counter=9
-    () => 'error (#${++counter})', // counter=10
-  );
-  log.s(
-    () => 'main (#${++counter})', // counter=11
-    () => 'shout (#${++counter})', // counter=12
-  );
-
-  print('\nOnly errors:\n');
-
-  log.level = LogLevel.error;
-  counter = 0;
 
   log.v(
     () => 'main (#${++counter})', // counter=0
@@ -106,25 +77,36 @@ void main() {
     () => 'debug (#${++counter})', // counter=0
   );
   log.i(
-    () => 'main (#${++counter})', // counter=0
-    () => 'info (#${++counter})', // counter=0
+    () => 'main (#${++counter})', // counter=1
+    () => 'info (#${++counter})', // counter=2
   );
   log.w(
-    () => 'main (#${++counter})', // counter=0
-    () => 'warning (#${++counter})', // counter=0
+    () => 'main (#${++counter})', // counter=3
+    () => 'warning (#${++counter})', // counter=4
   );
   log.e(
-    () => 'main (#${++counter})', // counter=1
-    () => 'error (#${++counter})', // counter=2
-    Exception('error'),
-    StackTrace.current,
+    () => 'main (#${++counter})', // counter=5
+    () => 'error (#${++counter})', // counter=6
   );
   log.s(
-    () => 'main (#${++counter})', // counter=3
-    () => 'shout (#${++counter})', // counter=4
-    Exception('shout'),
-    StackTrace.current,
+    () => 'main (#${++counter})', // counter=7
+    () => 'shout (#${++counter})', // counter=8
   );
+
+  print('\nAuto stack trace:\n');
+
+  log.level = LogLevel.error;
+
+  log.v('main', 'verbose');
+  log.d('main', 'debug');
+  log.i('main', 'info');
+  log.w('main', 'warning');
+  log.e('main', 'error', Exception('test')); // StackTrace.current
+  try {
+    throw StateError('test');
+  } on Object catch (e) {
+    log.s('main', 'shout', e); // stack trace from Error
+  }
 
   print('\nDisable logging completely:\n');
 
@@ -161,9 +143,7 @@ void main() {
 
   print('\nAccess to level logger:\n');
 
-  log[LogLevel.info].format =
-      (level, package, source, message, error, stackTrace) =>
-          Logger.buildDefaultMessage(level, package, source, message);
+  log[LogLevel.info].format = Logger.buildDefaultMessage;
   log[LogLevel.info].print = (text) => print('INFO: $text');
 
   log
@@ -194,13 +174,12 @@ void main() {
 
   log
     ..print = null
-    ..format = (level, package, source, message, error, stackTrace) {
+    ..format = (level, package, source, message, error) {
       final text = '${levelColors[level]!}[${level.shortName}]${ansi.reset}'
           ' $package |'
           '${source == null ? '' : ' $source |'}'
           ' $message'
-          '${error == null ? '' : ': $error'}'
-          '${stackTrace == StackTrace.empty ? '' : '\n$stackTrace'}';
+          '${error == null ? '' : ': $error'}';
       defaultPrinter.print(text);
       return text;
     };
@@ -219,17 +198,17 @@ void main() {
   print('\nSub loggers:\n');
 
   log = Logger('pkglog', level: LogLevel.all);
-  final subLog1 = log.withSource('MyClass');
+  final subLog1 = log.withSource(MyClass);
   final subLog2 = log.withSourceAndFormatting(
-    'MyClass',
+    MyClass,
     (message) => 'formatted: $message',
   );
-  final subLog3 = log.withSourceAndParam<String>(
-    'MyClass',
+  final subLog3 = log.withSourceAndContext<String>(
+    MyClass,
     (method, message) => '$method: $message',
   );
 
-  log.i('MyClass', 'info');
+  log.i(MyClass, 'info');
   subLog1.i('info');
   subLog2.i('info');
   subLog3.i('init', 'info');

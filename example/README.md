@@ -20,14 +20,13 @@ void main() {
 
   print('\nCustom formatting:\n');
 
-  log.format = (level, package, source, message, error, stackTrace) =>
+  log.format = (level, package, source, message, error) =>
       '[${level.shortName}]'
       ' $package'
       ' | ${DateTime.now()}'
       ' | $source'
       ' | $message'
-      '${error == null ? '' : ': $error'}'
-      '${stackTrace == StackTrace.empty ? '' : '\n$stackTrace'}';
+      '${error == null ? '' : ': $error'}';
 
   log.v('main', 'verbose');
   log.d('main', 'debug');

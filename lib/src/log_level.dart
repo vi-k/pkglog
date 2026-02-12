@@ -1,7 +1,11 @@
 part of 'logger.dart';
 
+final class LogLevelBase {
+  const LogLevelBase();
+}
+
 /// Log levels.
-enum LogLevel {
+enum LogLevel implements LogLevelBase {
   /// Verbose log level.
   verbose('v'),
 
@@ -26,8 +30,8 @@ enum LogLevel {
   const LogLevel(this.shortName);
 
   /// All log levels.
-  static LogLevel get all => verbose;
+  static const LogLevel all = verbose;
 
-  /// No log level.
-  static LogLevel? get off => null;
+  /// Logging off.
+  static const LogLevelBase off = LogLevelBase();
 }

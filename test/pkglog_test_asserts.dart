@@ -27,7 +27,8 @@ void main() {
   );
 
   final buf = <String>[];
-  final log = Logger('test', level: LogLevel.all)..print = buf.add;
+  final log = Logger('test', minLevel: MinLevel.all)
+    ..print = (msg) => buf.add(msg.text);
   var counter = 0;
 
   String Function() checkCalc(String msg) => () {
@@ -41,7 +42,7 @@ void main() {
     assert(log.i('main', 'info'));
     assert(log.w('main', 'warning'));
     assert(log.e('main', 'error'));
-    assert(log.s('main', 'shout'));
+    assert(log.critical('main', 'critical'));
   }
 
   void verificationOfParameterCalculation() {
@@ -51,7 +52,7 @@ void main() {
     assert(log.i(checkCalc('main'), checkCalc('info')));
     assert(log.w(checkCalc('main'), checkCalc('warning')));
     assert(log.e(checkCalc('main'), checkCalc('error')));
-    assert(log.s(checkCalc('main'), checkCalc('shout')));
+    assert(log.critical(checkCalc('main'), checkCalc('critical')));
   }
 
   void test(String name, void Function() callback) {
@@ -87,7 +88,7 @@ void main() {
       assertsEnabled ? expected : <String>[];
 
   test('all levels', () {
-    log.level = LogLevel.all;
+    log.minLevel = MinLevel.all;
     logAll();
 
     expectList(
@@ -98,10 +99,10 @@ void main() {
         '[i] test | main | info',
         '[w] test | main | warning',
         '[e] test | main | error',
-        '[s] test | main | shout',
+        '[!] test | main | critical',
       ]),
     );
-    print('result for LogLevel.all:\n${buf.isEmpty ? '-' : buf.join('\n')}');
+    print('result for MinLevel.all:\n${buf.isEmpty ? '-' : buf.join('\n')}');
 
     verificationOfParameterCalculation();
     print('counter: $counter');
@@ -111,7 +112,7 @@ void main() {
   });
 
   test('verbose level', () {
-    log.level = LogLevel.verbose; // == LogLevel.all
+    log.minLevel = MinLevel.verbose; // == MinLevel.all
     logAll();
     expectList(
       buf,
@@ -121,7 +122,7 @@ void main() {
         '[i] test | main | info',
         '[w] test | main | warning',
         '[e] test | main | error',
-        '[s] test | main | shout',
+        '[!] test | main | critical',
       ]),
     );
     verificationOfParameterCalculation();
@@ -129,7 +130,7 @@ void main() {
   });
 
   test('debug level', () {
-    log.level = LogLevel.debug;
+    log.minLevel = MinLevel.debug;
     logAll();
     expectList(
       buf,
@@ -138,7 +139,7 @@ void main() {
         '[i] test | main | info',
         '[w] test | main | warning',
         '[e] test | main | error',
-        '[s] test | main | shout',
+        '[!] test | main | critical',
       ]),
     );
     verificationOfParameterCalculation();
@@ -146,7 +147,7 @@ void main() {
   });
 
   test('info level', () {
-    log.level = LogLevel.info;
+    log.minLevel = MinLevel.info;
     logAll();
     expectList(
       buf,
@@ -154,7 +155,7 @@ void main() {
         '[i] test | main | info',
         '[w] test | main | warning',
         '[e] test | main | error',
-        '[s] test | main | shout',
+        '[!] test | main | critical',
       ]),
     );
     verificationOfParameterCalculation();
@@ -162,14 +163,14 @@ void main() {
   });
 
   test('warning level', () {
-    log.level = LogLevel.warning;
+    log.minLevel = MinLevel.warning;
     logAll();
     expectList(
       buf,
       whenAssertsEnabled([
         '[w] test | main | warning',
         '[e] test | main | error',
-        '[s] test | main | shout',
+        '[!] test | main | critical',
       ]),
     );
     verificationOfParameterCalculation();
@@ -177,26 +178,26 @@ void main() {
   });
 
   test('error level', () {
-    log.level = LogLevel.error;
+    log.minLevel = MinLevel.error;
     logAll();
     expectList(
       buf,
       whenAssertsEnabled([
         '[e] test | main | error',
-        '[s] test | main | shout',
+        '[!] test | main | critical',
       ]),
     );
     verificationOfParameterCalculation();
     expect(counter, assertsEnabled ? 4 : 0);
   });
 
-  test('shout level', () {
-    log.level = LogLevel.shout;
+  test('critical level', () {
+    log.minLevel = MinLevel.critical;
     logAll();
     expectList(
       buf,
       whenAssertsEnabled([
-        '[s] test | main | shout',
+        '[!] test | main | critical',
       ]),
     );
     verificationOfParameterCalculation();
@@ -204,7 +205,7 @@ void main() {
   });
 
   test('off', () {
-    log.level = LogLevel.off;
+    log.minLevel = MinLevel.off;
     logAll();
     expectList(buf, <String>[]);
     verificationOfParameterCalculation();

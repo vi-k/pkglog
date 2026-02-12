@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:ansi_escape_codes/ansi_escape_codes.dart' as ansi;
@@ -6,7 +7,7 @@ import 'package:pkglog/pkglog.dart';
 class MyClass {}
 
 void main() {
-  var log = Logger('pkglog', level: LogLevel.all);
+  var log = Logger('pkglog', minLevel: MinLevel.all);
 
   print('\nDefaults:\n');
 
@@ -15,39 +16,65 @@ void main() {
   log.i('main', 'info');
   log.w('main', 'warning');
   log.e('main', 'error');
-  log.s('main', 'shout');
+  log.critical('main', 'critical');
 
   print('\nCustom formatting:\n');
 
-  log.format = (level, package, source, message, error) =>
-      '[${level.shortName}] $package | ${DateTime.now()} |'
-      '${source == null ? '' : ' $source |'}'
-      ' $message'
-      '${error == null ? '' : ': $error'}';
+  log.format = (msg) => '${DateTime.now()} $msg';
 
   log.v('main', 'verbose');
   log.d('main', 'debug');
   log.i('main', 'info');
   log.w('main', 'warning');
   log.e('main', 'error');
-  log.s('main', 'shout');
+  log.critical('main', 'critical');
+
+  // Restore default format.
+  log.format = null;
 
   print('\nAnsi colors:\n');
 
-  for (final level in LogLevel.values) {
+  final colorLevels = <Level, String>{
+    Level.verbose: '${ansi.bg256Gray8}${ansi.fg256Rgb000}',
+    Level.debug: '${ansi.bg256Gray12}${ansi.fg256Rgb000}',
+    Level.info: '${ansi.bg256Rgb345}${ansi.fg256Rgb000}',
+    Level.warning: '${ansi.bg256Rgb440}${ansi.fg256Rgb000}',
+    Level.error: '${ansi.bg256Rgb400}${ansi.fg256Rgb000}',
+    Level.critical: '${ansi.bg256Rgb300}${ansi.fg256Rgb550}',
+  };
+  log.format =
+      (msg) => '${colorLevels[msg.level]}[${msg.level.shortName}]${ansi.reset}'
+          ' ${msg.package} |'
+          '${msg.source == null ? '' : ' ${msg.source} |'}'
+          ' ${msg.message}'
+          '${msg.error == null ? '' : ': ${msg.error}'}';
+
+  log.v('main', 'verbose');
+  log.d('main', 'debug');
+  log.i('main', 'info');
+  log.w('main', 'warning');
+  log.e('main', 'error');
+  log.critical('main', 'critical');
+
+  // Restore default format.
+  log.format = null;
+
+  print('\nCustom printing:\n');
+
+  for (final level in Level.values) {
     final printer = ansi.AnsiPrinter(
       ansiCodesEnabled: !Platform.isIOS,
       defaultState: ansi.SgrPlainState(
         foreground: switch (level) {
-          LogLevel.verbose => const ansi.Color256(ansi.Colors.gray8),
-          LogLevel.debug => const ansi.Color256(ansi.Colors.gray12),
-          LogLevel.info => const ansi.Color256(ansi.Colors.rgb345),
-          LogLevel.warning => const ansi.Color256(ansi.Colors.rgb440),
-          LogLevel.error => const ansi.Color256(ansi.Colors.rgb400),
-          LogLevel.shout => const ansi.Color256(ansi.Colors.rgb550),
+          Level.verbose => const ansi.Color256(ansi.Colors.gray8),
+          Level.debug => const ansi.Color256(ansi.Colors.gray12),
+          Level.info => const ansi.Color256(ansi.Colors.rgb345),
+          Level.warning => const ansi.Color256(ansi.Colors.rgb440),
+          Level.error => const ansi.Color256(ansi.Colors.rgb400),
+          Level.critical => const ansi.Color256(ansi.Colors.rgb550),
         },
         background: switch (level) {
-          LogLevel.shout => const ansi.Color256(ansi.Colors.rgb300),
+          Level.critical => const ansi.Color256(ansi.Colors.rgb300),
           _ => null,
         },
       ),
@@ -61,11 +88,14 @@ void main() {
   log.i('main', 'info');
   log.w('main', 'warning');
   log.e('main', 'error');
-  log.s('main', 'shout');
+  log.critical('main', 'critical');
+
+  // Restore default print.
+  log.print = print;
 
   print('\nDeferred parameter computation:\n');
 
-  log.level = LogLevel.info;
+  log.minLevel = MinLevel.info;
   var counter = 0;
 
   log.v(
@@ -88,14 +118,14 @@ void main() {
     () => 'main (#${++counter})', // counter=5
     () => 'error (#${++counter})', // counter=6
   );
-  log.s(
+  log.critical(
     () => 'main (#${++counter})', // counter=7
-    () => 'shout (#${++counter})', // counter=8
+    () => 'critical (#${++counter})', // counter=8
   );
 
   print('\nAuto stack trace:\n');
 
-  log.level = LogLevel.error;
+  log.minLevel = MinLevel.error;
 
   log.v('main', 'verbose');
   log.d('main', 'debug');
@@ -104,31 +134,32 @@ void main() {
   log.e('main', 'error', Exception('test')); // StackTrace.current
   try {
     throw StateError('test');
-  } on Object catch (e) {
-    log.s('main', 'shout', e); // stack trace from Error
+  } on Object catch (error) {
+    // The stack trace will be taken from Error.
+    log.critical('main', 'critical', error);
   }
 
   print('\nDisable logging completely:\n');
 
-  log.level = LogLevel.off;
+  log.minLevel = MinLevel.off;
 
   log.v('main', 'verbose');
   log.d('main', 'debug');
   log.i('main', 'info');
   log.w('main', 'warning');
   log.e('main', 'error');
-  log.s('main', 'shout');
+  log.critical('main', 'critical');
 
   print('\nDisabling the logger using asserts:\n');
 
-  log.level = LogLevel.all;
+  log.minLevel = MinLevel.all;
 
   assert(log.v('main', 'verbose'));
   assert(log.d('main', 'debug'));
   assert(log.i('main', 'info'));
   assert(log.w('main', 'warning'));
   assert(log.e('main', 'error'));
-  assert(log.s('main', 'shout'));
+  assert(log.critical('main', 'critical'));
 
   print('\nEnabling the logger using compile environment:\n');
 
@@ -139,77 +170,38 @@ void main() {
   logIsEnabled && log.i('main', 'info');
   logIsEnabled && log.w('main', 'warning');
   logIsEnabled && log.e('main', 'error');
-  logIsEnabled && log.s('main', 'shout');
+  logIsEnabled && log.critical('main', 'critical');
 
   print('\nAccess to level logger:\n');
 
-  log[LogLevel.info].format = Logger.buildDefaultMessage;
-  log[LogLevel.info].print = (text) => print('INFO: $text');
+  log[Level.info].format =
+      (msg) => '${msg.level.name.toUpperCase()}: ${msg.message}';
 
-  log
-    ..level = LogLevel.all
-    ..i('main', 'info')
-    ..log(LogLevel.info, 'main', 'info');
+  log[Level.info].print =
+      (msg) => print('${ansi.fgGreen}${msg.text}${ansi.reset}');
 
-  print('\nCustom printing:\n');
-
-  log = Logger('pkglog', level: LogLevel.all);
-
-  final defaultPrinter = ansi.AnsiPrinter(
-    ansiCodesEnabled: !Platform.isIOS,
-    defaultState: const ansi.SgrPlainState(
-      foreground: ansi.Color256(ansi.Colors.gray12),
-    ),
-    stacked: true,
-  );
-
-  final levelColors = <LogLevel, String>{
-    LogLevel.verbose: '${ansi.fg256Gray0}${ansi.bg256Gray8}',
-    LogLevel.debug: '${ansi.fg256Gray0}${ansi.bg256Gray12}',
-    LogLevel.info: '${ansi.fg256Gray0}${ansi.bg256Rgb345}',
-    LogLevel.warning: '${ansi.fg256Gray0}${ansi.bg256Rgb440}',
-    LogLevel.error: '${ansi.fg256Gray0}${ansi.bg256Rgb400}',
-    LogLevel.shout: '${ansi.fg256Rgb550}${ansi.bg256Rgb400}',
-  };
-
-  log
-    ..print = null
-    ..format = (level, package, source, message, error) {
-      final text = '${levelColors[level]!}[${level.shortName}]${ansi.reset}'
-          ' $package |'
-          '${source == null ? '' : ' $source |'}'
-          ' $message'
-          '${error == null ? '' : ': $error'}';
-      defaultPrinter.print(text);
-      return text;
-    };
-
-  const query = 'GET https://example.com/';
-
-  log.i('http', '$query | ${ansi.fg256Rgb050}[200] OK${ansi.reset}');
-  log.w('http', '$query | ${ansi.fg256Rgb530}[301] Redirect${ansi.reset}');
-  log.e('http', '$query | ${ansi.fg256Rgb500}[400] Bad request${ansi.reset}');
-  log.s(
-    'http',
-    '$query | ${ansi.fg256Rgb511}${ansi.bg256Rgb100}'
-        '[500] Internal Server Error${ansi.reset}',
-  );
+  log[Level.info].log('main', 'info');
 
   print('\nSub loggers:\n');
 
-  log = Logger('pkglog', level: LogLevel.all);
+  log = Logger('pkglog', minLevel: MinLevel.all);
+  log.i(MyClass, 'info');
+
   final subLog1 = log.withSource(MyClass);
-  final subLog2 = log.withSourceAndFormatting(
-    MyClass,
+  subLog1.i('info');
+
+  final subLog2 = subLog1.withFormatting(
     (message) => 'formatted: $message',
   );
-  final subLog3 = log.withSourceAndContext<String>(
-    MyClass,
+  subLog2.i('info');
+
+  final subLog3 = subLog1.withContext<String>(
     (method, message) => '$method: $message',
   );
-
-  log.i(MyClass, 'info');
-  subLog1.i('info');
-  subLog2.i('info');
   subLog3.i('init', 'info');
+
+  final subLog4 = subLog1.withContext<Map<String, Object?>>(
+    (context, message) => '$message: ${jsonEncode(context)}',
+  );
+  subLog4.i({'method': 'init', 'id': 1}, 'info');
 }

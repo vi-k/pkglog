@@ -1,11 +1,12 @@
 import 'dart:async';
 
+part 'log_message.dart';
 part 'log_error.dart';
-part 'log_level.dart';
+part 'levels.dart';
 part 'level_logger.dart';
 part 'sub_loggers/sub_logger.dart';
-part 'sub_loggers/sub_logger_with_source.dart';
-part 'sub_loggers/sub_logger_with_source_and_context.dart';
+part 'sub_loggers/logger_with_source.dart';
+part 'sub_loggers/logger_with_source_and_context.dart';
 
 typedef LogFunction = bool Function(
   Object? source,
@@ -16,12 +17,12 @@ typedef LogFunction = bool Function(
 
 /// Main class for logging.
 ///
-/// You can use [v], [d], [i], [w], [e], [s] to log messages with different
-/// levels.
+/// You can use [v], [d], [i], [w], [e], [critical] to log messages with
+/// different levels.
 ///
 /// Example:
 /// ```dart
-/// final log = Logger('my_package', level: LogLevel.debug);
+/// final log = Logger('my_package', minLevel: MinLevel.debug);
 /// log.d('source', 'message');
 /// ```
 final class Logger {
@@ -33,159 +34,99 @@ final class Logger {
   });
 
   final String package;
-
-  late LogLevelBase _level;
-  late final List<LevelLogger> _loggers;
-  final List<LogFunction> _logFunctions =
-      List.filled(LogLevel.values.length, _noLog);
-  final List<WeakReference<SubLogger>> _subLoggers = [];
-
-  LogFunction _v = _noLog;
-  LogFunction _d = _noLog;
-  LogFunction _i = _noLog;
-  LogFunction _w = _noLog;
-  LogFunction _e = _noLog;
-  LogFunction _s = _noLog;
+  late MinLevel _minLevel;
 
   /// Creates a new [Logger].
   ///
   /// [package] is the name of the package.
-  /// [level] is the minimum log level.
-  Logger(this.package, {required LogLevelBase level}) {
-    _loggers = List.generate(
-      LogLevel.values.length,
-      (index) => LevelLogger._(this, LogLevel.values[index]),
-      growable: false,
-    );
-
-    this.level = level;
+  /// [minLevel] is the minimum log level.
+  Logger(this.package, {MinLevel minLevel = MinLevel.critical}) {
+    _loggers = [_v, _d, _i, _w, _e, _c];
+    for (final logger in _loggers) {
+      logger._logger = this;
+    }
+    this.minLevel = minLevel;
   }
 
+  final LevelLogger _v = LevelLogger._(Level.verbose);
+  final LevelLogger _d = LevelLogger._(Level.debug);
+  final LevelLogger _i = LevelLogger._(Level.info);
+  final LevelLogger _w = LevelLogger._(Level.warning);
+  final LevelLogger _e = LevelLogger._(Level.error);
+  final LevelLogger _c = LevelLogger._(Level.critical);
+
+  late final List<LevelLogger> _loggers;
+  final List<WeakReference<SubLogger>> _subLoggers = [];
+
+  // LogFunction _v = _noLog;
+  // LogFunction _d = _noLog;
+  // LogFunction _i = _noLog;
+  // LogFunction _w = _noLog;
+  // LogFunction _e = _noLog;
+  // LogFunction _c = _noLog;
+
   int get $subLoggersCount => _subLoggers.length;
+
+  bool get isEnabled => _minLevel != MinLevel.off;
 
   /// Returns a sub-logger with the predefined [source].
   ///
   /// The source is calculated lazily when the first message is actually
   /// logged.
-  SubLoggerWithSource withSource(Object? source) {
-    final sublogger = SubLoggerWithSource._(
+  LoggerWithSource withSource(Object? source) {
+    final sublogger = LoggerWithSource._(
       this, //
-      level: _level,
+      level: _minLevel,
       source: source,
     );
-    _subLoggers.add(WeakReference(sublogger));
-    _finalizer.attach(sublogger, this);
+    _addSubLogger(sublogger);
     return sublogger;
   }
 
-  /// Returns a sub-logger with the predefined [source] and custom message
-  /// formatting function [format].
-  ///
-  /// The source is calculated lazily when the first message is actually
-  /// logged.
-  SubLoggerWithSource withSourceAndFormatting(
-    Object? source,
-    String Function(String) format,
-  ) {
-    final sublogger = SubLoggerWithSource._(
-      this, //
-      level: _level,
-      source: source,
-      format: format,
-    );
+  void _addSubLogger(SubLogger sublogger) {
     _subLoggers.add(WeakReference(sublogger));
     _finalizer.attach(sublogger, this);
-    return sublogger;
-  }
-
-  /// Returns a sub-logger with the predefined [source] and custom message
-  /// formatting function [format], that passes additional context from logging
-  /// functions.
-  ///
-  /// ```dart
-  /// final _log = log.withSourceAndContext<String>(
-  ///   'MyClass',
-  ///   (method, message) => '$method | $message',
-  /// );
-  ///
-  /// _log.i('init', 'info');
-  ///
-  /// // [i] my_package | MyClass | init | info
-  /// ```
-  ///
-  /// or:
-  ///
-  /// ```dart
-  /// final _log = log.withSourceAndContext<Map<String, Object?>(
-  ///   'MyClass',
-  ///   (context, message) => '$message: ${jsonEncode(context}',
-  /// );
-  ///
-  /// _log.i({'method': 'init', 'id': 1}, 'info');
-  ///
-  /// // [i] my_package | MyClass | info: {'method': 'init', 'id': 1}
-  /// ```
-  SubLoggerWithSourceAndContext<T> withSourceAndContext<T extends Object?>(
-    Object? source,
-    String Function(T context, String message) format,
-  ) {
-    final sublogger = SubLoggerWithSourceAndContext._(
-      this,
-      source: source,
-      format: format,
-      level: _level,
-    );
-    _subLoggers.add(WeakReference(sublogger));
-    _finalizer.attach(sublogger, this);
-    return sublogger;
   }
 
   /// Log verbose message.
-  LogFunction get v => _v;
+  LogFunction get v => _v.log;
 
   /// Log debug message.
-  LogFunction get d => _d;
+  LogFunction get d => _d.log;
 
   /// Log info message.
-  LogFunction get i => _i;
+  LogFunction get i => _i.log;
 
   /// Log warning message.
-  LogFunction get w => _w;
+  LogFunction get w => _w.log;
 
   /// Log error message.
-  LogFunction get e => _e;
+  LogFunction get e => _e.log;
 
-  /// Log shout message.
-  LogFunction get s => _s;
+  /// Log critical message.
+  LogFunction get critical => _c.log;
 
   /// Returns the [LevelLogger] for the given [level].
-  LevelLogger operator [](LogLevel level) => _loggers[level.index];
+  LevelLogger operator [](Level level) => _loggers[level.index];
 
   /// Sets the minimum log level.
   ///
   /// ```dart
   /// // Only errors will be logged.
-  /// log.level = LogLevel.error;
+  /// log.minLevel = MinLevel.error;
   ///
   /// // Errors and warnings will be logged.
-  /// log.level = LogLevel.warning;
+  /// log.minLevel = MinLevel.warning;
   /// ```
   // ignore: avoid_setters_without_getters
-  set level(LogLevelBase value) {
-    _level = value;
-    for (final level in LogLevel.values) {
-      _logFunctions[level.index] = _logFunction(level, value);
+  set minLevel(MinLevel value) {
+    _minLevel = value;
+    for (final level in Level.values) {
+      _loggers[level.index]._toggle(value <= level);
     }
 
-    _v = _logFunctions[LogLevel.verbose.index];
-    _d = _logFunctions[LogLevel.debug.index];
-    _i = _logFunctions[LogLevel.info.index];
-    _w = _logFunctions[LogLevel.warning.index];
-    _e = _logFunctions[LogLevel.error.index];
-    _s = _logFunctions[LogLevel.shout.index];
-
     for (final subLogger in _subLoggers) {
-      subLogger.target?._setLevel(value);
+      subLogger.target?._setMinLevel(value);
     }
   }
 
@@ -201,7 +142,7 @@ final class Logger {
   /// };
   /// ```
   // ignore: avoid_setters_without_getters
-  set format(LogFormatter formatter) {
+  set format(LogFormatter? formatter) {
     for (final logger in _loggers) {
       logger.format = formatter;
     }
@@ -223,45 +164,51 @@ final class Logger {
     }
   }
 
-  /// Logs a message with the given [level], [source], [message], [error] and
-  /// [stackTrace].
-  bool log(
-    LogLevel level,
-    Object? source,
-    Object? message, [
-    Object? error,
-    StackTrace? stackTrace,
-  ]) =>
-      _logFunctions[level.index](source, message, error, stackTrace);
-
-  LogFunction _logFunction(LogLevel logLevel, LogLevelBase minLevel) =>
-      minLevel is LogLevel && minLevel.index <= logLevel.index
-          ? _loggers[logLevel.index]._log
-          : _noLog;
-
-  static bool _noLog(
-    Object? source,
-    Object? message, [
-    Object? error,
-    StackTrace? stackTrace,
-  ]) =>
-      true;
+  /// Resolve the [obj] to the object instance.
+  ///
+  /// If the object is a function, it is called and the result is returned
+  ///
+  /// Can be used for custom formatting in [LoggerWithSource.withContext].
+  ///
+  /// ```dart
+  /// final _log = log
+  ///     .withSource(MyClass)
+  ///     .withContext<Object?>(
+  ///       (context, message) {
+  ///         final object = Logger.resolveToObject(context);
+  ///         return '$message context=${jsonEncode(object)}';
+  ///       },
+  ///     );
+  ///
+  /// Object? evaluateContext() {
+  ///   return {'method': 'init', 'id': 1};
+  /// }
+  ///
+  /// _log.i(evaluateContext, 'info');
+  ///
+  /// // [i] pkglog | MyClass | info context={"method":"init","id":1}
+  /// ```
+  ///
+  /// See also [resolveToString].
+  static Object? resolveToObject(Object? obj) =>
+      obj is Object? Function() ? obj() : obj;
 
   /// Converts an object to a string.
   ///
   /// If the object is a function, it is called and the result is converted to
   /// a string.
   ///
-  /// Can be used for custom formatting in [withSourceAndContext].
+  /// Can be used for custom formatting in [LoggerWithSource.withContext].
   ///
   /// ```dart
-  /// final _log = log.withSourceAndContext<Object?>(
-  ///   'MyClass',
-  ///   (context, message) {
-  ///     final contextString = Logger.objToString(context);
-  ///     return '$message context=$contextString';
-  ///   },
-  /// );
+  /// final _log = log
+  ///     .withSource(MyClass)
+  ///     .withContext<Object?>(
+  ///       (context, message) {
+  ///         final contextString = Logger.resolveToString(context);
+  ///         return '$message context=$contextString';
+  ///       },
+  ///     );
   ///
   /// Object? calcContext() {
   ///   return {'method': 'init', 'id': 1};
@@ -271,8 +218,10 @@ final class Logger {
   ///
   /// // [i] my_package | MyClass | info context={method: init, id: 1}
   /// ```
-  static String? objToString(Object? obj) {
-    final message = obj is Object? Function() ? obj() : obj;
+  ///
+  /// See also [resolveToObject].
+  static String? resolveToString(Object? obj) {
+    final message = resolveToObject(obj);
     return switch (message) {
       String() => message,
       Object() => message.toString(),
@@ -286,21 +235,10 @@ final class Logger {
   /// log.format = (level, package, source, message, error) {
   ///   final msg =
   ///       Logger.buildDefaultMessage(level, package, source, message, error);
-  ///   return level == LogLevel.error || level == LogLevel.shout
+  ///   return level.isError
   ///       ? '\x1B[31m$msg\x1B[0m'
   ///       : '$msg';
   /// };
   /// ```
-  static String buildDefaultMessage(
-    LogLevel level,
-    String package,
-    String? source,
-    String message, [
-    LogError? error,
-  ]) =>
-      '[${level.shortName}]'
-      ' $package |'
-      '${source == null ? '' : ' $source |'}'
-      ' $message'
-      '${error == null ? '' : ': $error'}';
+  static void defaultPrinter(LogMessage msg) => Zone.current.print(msg.text);
 }

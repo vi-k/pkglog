@@ -29,8 +29,8 @@ log.i('main', 'info');
 
 ```dart
 void i(String package, String message) {
-  if (level <= LogLevel.info) {
-    print(format(LogLevel.info, package, message));
+  if (level <= Level.info) {
+    print(format(Level.info, package, message));
   }
 }
 ```
@@ -68,7 +68,7 @@ if (logIsEnabled) {
 что позволяет использовать их в `assert` и `&&` цепочках.
 
 ```dart
-final log = Logger('pkglog', level: LogLevel.all);
+final log = Logger('pkglog', minLevel: MinLevel.all);
 
 // ...
 
@@ -144,7 +144,7 @@ or final instance to reuse it throughout your package.
 import 'package:pkglog/pkglog.dart';
 
 // Create a logger for your package
-final log = Logger('my_package', level: LogLevel.shout);
+final log = Logger('my_package', minLevel: MinLevel.critical);
 
 void main() {
   log.v('Verbose message');
@@ -152,17 +152,17 @@ void main() {
   log.i('Info message');
   log.w('Warning message');
   log.e('Error message');
-  log.s('Shout message');
+  log.critical('Critical message');
 }
 ```
 
 Please note that by default, only critical errors are logged in the logger.
-This is the correct setting when developing a package. In your case, it may even
-be necessary to disable the logger completely: `LogLevel.off`. Enable other
-logging levels only in your tests and examples.
+This is the correct setting when developing a package. In your case, it may
+even be necessary to disable the logger completely: `MinLevel.off`. Enable
+other logging levels only in your tests and examples.
 
 ```dart
-log.level = LogLevel.all;
+log.minLevel = MinLevel.all;
 ```
 
 ### Performance
@@ -176,7 +176,7 @@ assert(log.d('main', 'Debug message'));
 assert(log.i('main', 'Info message'));
 assert(log.w('main', 'Warning message'));
 assert(log.e('main', 'Error message'));
-assert(log.s('main', 'Shout message'));
+assert(log.critical('main', 'Critical message'));
 ```
 
 или используйте константу:
@@ -296,7 +296,7 @@ log.format = (level, package, source, message, error, stacktrace) {
     level, package, source, //
     message, error, stacktrace,
   );
-  final out = level.index >= LogLevel.error.index ? stderr : stdin;
+  final out = level < Level.error ? stdin : stderr;
   out.writeln(text);
   return '';
 };
@@ -309,8 +309,8 @@ log.print = null;
 
 ```dart
 log.print = stdout.writeln;
-log[LogLevel.error].print = stderr.writeln;
-log[LogLevel.shout].print = stderr.writeln;
+log[Level.error].print = stderr.writeln;
+log[Level.critical].print = stderr.writeln;
 ```
 
 > [!IMPORTANT]
@@ -358,7 +358,7 @@ _w('warning');
 В `pkglog` есть возможность создать sub-logger, в котором нет этой проблемы:
 
 ```dart
-final _log = log.withSource('$MyClass');
+final _log = log.withSource(MyClass);
 
 _log.d('debug');
 _log.i('info');
@@ -380,10 +380,9 @@ final sw = Stopwatch()..start();
 
 //...
 
-final _log = log.withSourceAndFormatting(
-  'event processing',
-  (message) => '${sw.elapsed} | $message',
-);
+final _log = log
+    .withSource('event processing')
+    .withFormatting((message) => '${sw.elapsed} | $message');
 
 _log.i('info');
 
@@ -393,10 +392,9 @@ _log.i('info');
 или форматирование с передаваемым пользователем типизированным параметром:
 
 ```dart
-final _log = log.withSourceAndParam<String>(
-  '$MyClass',
-  (method, message) => '$method | $message',
-);
+final _log = log
+    .withSource(MyClass)
+    .withContext<String>((method, message) => '$method | $message');
 
 _log.i('dispose', 'info');
 
@@ -420,7 +418,7 @@ abstract final class MyPackageConfig {
   static bool _logEnabled = false;
   static set logEnabled(bool enabled) {
     _logEnabled = enabled;
-    log.level = enabled ? LogLevel.debug : LogLevel.error;
+    log.level = enabled ? Level.debug : Level.error;
   }
 }
 ```
@@ -429,7 +427,7 @@ abstract final class MyPackageConfig {
 то создайте собственные уровни:
 
 ```dart
-enum MyPackageLogLevel {
+enum MyPackageLevel {
   debug,
   info,
   error,
@@ -439,22 +437,22 @@ enum MyPackageLogLevel {
 // ...
 
 abstract final class MyPackageConfig {
-  static MyPackageLogLevelLogLevel get level => _level;
-  static MyPackageLogLevel _level = MyPackageLogLevel.off;
-  static set level(MyPackageLogLevel level) {
+  static MyPackageLevelLevel get level => _level;
+  static MyPackageLevel _level = MyPackageLevel.off;
+  static set level(MyPackageLevel level) {
     _level = level;
     log.level = switch (level) {
-      MyPackageLogLevel.debug => LogLevel.debug,
-      MyPackageLogLevel.info => LogLevel.info,
-      MyPackageLogLevel.error => LogLevel.error,
-      MyPackageLogLevel.off => LogLevel.off,
+      MyPackageLevel.debug => Level.debug,
+      MyPackageLevel.info => Level.info,
+      MyPackageLevel.error => Level.error,
+      MyPackageLevel.off => Level.off,
     };
   }
 }
 
 // ...
 
-final log = Logger('my_package', level: LogLevel.off);
+final log = Logger('my_package', level: Level.off);
 ```
 
 То же самое сделайте с возможностью настроить пользователем свой `format` и
@@ -478,20 +476,20 @@ final log = Logger('my_package', level: LogLevel.off);
 import 'package:ansi_escape_codes/ansi_escape_codes.dart' as ansi;
 import 'package:pkglog/pkglog.dart';
 
-for (final level in LogLevel.values) {
+for (final level in Level.values) {
   final printer = ansi.AnsiPrinter(
     ansiCodesEnabled: !Platform.isIOS,
     defaultState: ansi.SgrPlainState(
       foreground: switch (level) {
-        LogLevel.verbose => const ansi.Color256(ansi.Colors.gray8),
-        LogLevel.debug => const ansi.Color256(ansi.Colors.gray12),
-        LogLevel.info => const ansi.Color256(ansi.Colors.rgb345),
-        LogLevel.warning => const ansi.Color256(ansi.Colors.rgb440),
-        LogLevel.error => const ansi.Color256(ansi.Colors.rgb400),
-        LogLevel.shout => const ansi.Color256(ansi.Colors.rgb550),
+        Level.verbose => const ansi.Color256(ansi.Colors.gray8),
+        Level.debug => const ansi.Color256(ansi.Colors.gray12),
+        Level.info => const ansi.Color256(ansi.Colors.rgb345),
+        Level.warning => const ansi.Color256(ansi.Colors.rgb440),
+        Level.error => const ansi.Color256(ansi.Colors.rgb400),
+        Level.critical => const ansi.Color256(ansi.Colors.rgb550),
       },
       background: switch (level) {
-        LogLevel.shout => const ansi.Color256(ansi.Colors.rgb300),
+        Level.critical => const ansi.Color256(ansi.Colors.rgb300),
         _ => null,
       },
     ),

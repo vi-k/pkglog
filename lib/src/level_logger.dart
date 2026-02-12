@@ -1,56 +1,65 @@
 part of 'logger.dart';
 
 /// Formats a log message.
-///
-/// [level] is the log level.
-/// [package] is the name of the package.
-/// [source] is the source of the log message.
-/// [message] is the log message.
-/// [error] is the error object.
-typedef LogFormatter = String Function(
-  LogLevel level,
-  String package,
-  String? source,
-  String message,
-  LogError? error,
-);
+typedef LogFormatter = String Function(LogMessage context);
 
 /// Prints a log message.
-typedef LogPrinter = void Function(String text);
+typedef LogPrinter = void Function(LogMessage context);
 
-/// Logger for a specific [LogLevel].
+/// Logger for a specific [Level].
 ///
 /// Used for configuration:
 ///
 /// ```dart
 /// final log = Logger('my_package');
-/// log[LogLevel.info] // <- LevelLogger
+/// log[Level.info] // <- LevelLogger
 ///   ..format = ...
 ///   ..print = ...;
 /// ```
 final class LevelLogger {
-  final Logger _logger;
-  final LogLevel _level;
-
-  LogFormatter _formatter = Logger.buildDefaultMessage;
-  LogPrinter? _printer = Zone.current.print;
+  final Level _level;
 
   /// Creates a new [LevelLogger].
-  LevelLogger._(this._logger, this._level);
+  LevelLogger._(this._level);
+
+  Logger? _logger;
+  Logger get _requireLogger =>
+      _logger ?? (throw StateError('Logger is not attached'));
+
+  LogMessageBuilder _messageBuilder = LogMessage.new;
+
+  LogFormatter? _formatter;
+
+  LogPrinter? _printer = Logger.defaultPrinter;
+
+  LogFunction _log = _noLog;
+  LogFunction get log => _log;
+
+  bool isEnabled(Level level) => !identical(_log, _noLog);
+
+  void _toggle(bool enabled) {
+    _log = enabled ? _realLog : _noLog;
+  }
+
+  /// Sets the context builder.
+  // ignore: avoid_setters_without_getters
+  set contextBuilder(LogMessageBuilder builder) {
+    _messageBuilder = builder;
+  }
 
   /// Sets the log formatter.
   ///
   /// ```dart
   /// // Use the default message formatter.
-  /// log[LogLevel.debug].format = Logger.buildDefaultMessage;
+  /// log[Level.debug].format = Logger.buildDefaultMessage;
   ///
   /// // Use a custom message formatter.
-  /// log[LogLevel.debug].format = (level, package, source, message, error) {
+  /// log[Level.debug].format = (level, package, source, message, error) {
   ///   return '${level.name.toUpperCase()}: $message';
   /// };
   /// ```
   // ignore: avoid_setters_without_getters
-  set format(LogFormatter formatter) {
+  set format(LogFormatter? formatter) {
     _formatter = formatter;
   }
 
@@ -58,28 +67,37 @@ final class LevelLogger {
   ///
   /// ```dart
   /// // Use `print` by default.
-  /// log[LogLevel.debug].print = print;
+  /// log[Level.debug].print = print;
   ///
   /// // Use a custom log printer.
-  /// log[LogLevel.error].print = stderr.writeln;
-  /// log[LogLevel.shout].print = stderr.writeln;
+  /// log[Level.error].print = stderr.writeln;
+  /// log[Level.critical].print = stderr.writeln;
   /// ```
   // ignore: avoid_setters_without_getters
   set print(LogPrinter? printer) {
     _printer = printer;
   }
 
-  bool _log(
+  @pragma('vm:prefer-inline')
+  static bool _noLog(
+    Object? source,
+    Object? message, [
+    Object? error,
+    StackTrace? stackTrace,
+  ]) =>
+      true;
+
+  bool _realLog(
     Object? source,
     Object? message, [
     Object? error,
     StackTrace? stackTrace,
   ]) {
-    final text = _formatter(
+    final context = _messageBuilder(
       _level,
-      _logger.package,
-      Logger.objToString(source),
-      Logger.objToString(message) ?? 'null',
+      _requireLogger.package,
+      Logger.resolveToString(source),
+      Logger.resolveToString(message) ?? 'null',
       error == null
           ? null
           : LogError._(
@@ -91,7 +109,12 @@ final class LevelLogger {
                   },
             ),
     );
-    _printer?.call(text);
+
+    if (_formatter case final formatter?) {
+      context._text = formatter(context);
+    }
+
+    _printer?.call(context);
 
     return true;
   }

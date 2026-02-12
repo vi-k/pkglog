@@ -84,7 +84,7 @@ final class LevelLogger {
           ? null
           : LogError._(
               error,
-              stackTrace = stackTrace ??
+              stackTrace ??
                   switch (error) {
                     Error(:final stackTrace?) => stackTrace,
                     _ => StackTrace.current,

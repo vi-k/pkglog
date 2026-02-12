@@ -7,9 +7,9 @@ name: Dart
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
   pull_request:
-    branches: [ "main" ]
+    branches: ["main"]
 
 jobs:
   build:
@@ -26,6 +26,9 @@ jobs:
 
       - name: Install dependencies
         run: dart pub get
+
+      - name: Install example dependencies
+        run: dart pub get --directory=example/pkglog_example
 
       # Uncomment this step to verify the use of 'dart format' on each commit.
       # - name: Verify formatting

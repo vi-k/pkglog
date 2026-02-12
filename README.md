@@ -1,3 +1,4 @@
+<a href="https://github.com/vi-k/pkglog/actions"><img src="https://github.com/vi-k/pkglog/actions/workflows/main.yaml/badge.svg" alt="build"></a>
 
 Принципиально минималистичный логер для библиотек.
 

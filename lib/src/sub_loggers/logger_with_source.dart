@@ -2,14 +2,14 @@ part of '../logger.dart';
 
 /// Function type for sub-loggers with source.
 typedef LoggerWithSourceFunction = bool Function(
-  Object? message, [
+  Object? message, {
   Object? error,
   StackTrace? stackTrace,
-]);
+});
 
 /// A sub-logger with predefined source and optional message formatting.
 ///
-/// See [Logger.withSource] and [LoggerWithSource.withContext].
+/// See [Logger.withSource] and [Logger.withContext].
 final class LoggerWithSource extends SubLogger {
   final Object? _source;
   final String Function(String message)? format;
@@ -48,113 +48,58 @@ final class LoggerWithSource extends SubLogger {
   /// Log critical message.
   LoggerWithSourceFunction get critical => _c;
 
-  /// Returns a sub-logger with the predefined [source] and custom message
-  /// formatting function [format].
-  ///
-  /// The source is calculated lazily when the first message is actually
-  /// logged.
-  LoggerWithSource withFormatting(
-    String Function(String) format,
-  ) {
-    final sublogger = LoggerWithSource._(
-      _logger,
-      level: _logger._minLevel,
-      source: _source,
-      format: format,
-    );
-    _logger._addSubLogger(sublogger);
-    return sublogger;
-  }
-
-  /// Returns a sub-logger with the predefined source and custom message
-  /// formatting function [format], that passes additional context from logging
-  /// functions.
-  ///
-  /// ```dart
-  /// final log = Logger('pkglog', minLevel: MinLevel.all);
-  /// final subLog = log
-  ///     .withSource(MyClass)
-  ///     .withContext<String>((method, message) => '$method | $message');
-  ///
-  /// subLog.i('init', 'info');
-  ///
-  /// // [i] my_package | MyClass | init | info
-  /// ```
-  ///
-  /// or:
-  ///
-  /// ```dart
-  /// final log = Logger('pkglog', minLevel: MinLevel.all);
-  /// final subLog = log //
-  ///     .withSource(MyClass)
-  ///     .withContext<Map<String, Object?>>(
-  ///       (context, message) => '$message: ${jsonEncode(context)}',
-  ///     );
-  ///
-  /// subLog.i({'method': 'init', 'id': 1}, 'info');
-  ///
-  /// // [i] my_package | MyClass | info: {"method":"init","id":1}
-  /// ```
-  LoggerWithSourceAndContext<T> withContext<T extends Object?>(
-    String Function(T context, String message) format,
-  ) {
-    final sublogger = LoggerWithSourceAndContext._(
-      _logger,
-      source: _source,
-      format: format,
-      level: _logger._minLevel,
-    );
-    _logger._addSubLogger(sublogger);
-    return sublogger;
-  }
-
   @override
   // ignore: avoid_setters_without_getters
-  void _setMinLevel(MinLevel value) {
-    _v = _selectLog(Level.verbose, value);
-    _d = _selectLog(Level.debug, value);
-    _i = _selectLog(Level.info, value);
-    _w = _selectLog(Level.warning, value);
-    _e = _selectLog(Level.error, value);
-    _c = _selectLog(Level.critical, value);
+  void _setLevel(LogLevel value) {
+    _v = _selectLog(LoggerLevel._verbose, value);
+    _d = _selectLog(LoggerLevel._debug, value);
+    _i = _selectLog(LoggerLevel._info, value);
+    _w = _selectLog(LoggerLevel._warning, value);
+    _e = _selectLog(LoggerLevel._error, value);
+    _c = _selectLog(LoggerLevel._critical, value);
   }
 
   LoggerWithSourceFunction _selectLog(
-    Level level,
-    MinLevel minLevel,
+    LoggerLevel loggerLevel,
+    LogLevel logLevel,
   ) =>
-      minLevel <= level
+      logLevel <= loggerLevel
           ? switch (format) {
-              null => _log(_logger[level]),
-              final format => _logWithFormat(_logger[level], format),
+              null => _log(_logger[loggerLevel]),
+              final format => _logWithFormat(_logger[loggerLevel], format),
             }
           : _noLog;
 
   @pragma('vm:prefer-inline')
   static bool _noLog(
-    Object? message, [
+    Object? message, {
     Object? error,
     StackTrace? stackTrace,
-  ]) =>
+  }) =>
       true;
 
   LoggerWithSourceFunction _log(LevelLogger logger) =>
-      (message, [error, stackTrace]) {
+      (message, {error, stackTrace}) {
         _resolvedSource ??= Logger.resolveToString(_source);
-        return logger._realLog(_resolvedSource, message, error, stackTrace);
+        return logger._realLog(
+          _resolvedSource,
+          message,
+          error: error,
+          stackTrace: stackTrace,
+        );
       };
 
   LoggerWithSourceFunction _logWithFormat(
     LevelLogger logger,
     String Function(String message) format,
   ) =>
-      (message, [error, stackTrace]) {
+      (message, {error, stackTrace}) {
         _resolvedSource ??= Logger.resolveToString(_source);
         return logger._realLog(
           _resolvedSource,
           format(Logger.resolveToString(message) ?? ''),
-          error,
-          stackTrace,
+          error: error,
+          stackTrace: stackTrace,
         );
       };
 }

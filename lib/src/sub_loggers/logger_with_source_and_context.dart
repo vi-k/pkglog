@@ -3,14 +3,14 @@ part of '../logger.dart';
 /// Function type for sub-loggers with context.
 typedef LoggerWithSourceAndContextFunction<T extends Object?> = bool Function(
   T context,
-  Object? message, [
+  Object? message, {
   Object? error,
   StackTrace? stackTrace,
-]);
+});
 
 /// A sub-logger that takes a context and formats the message.
 ///
-/// See [LoggerWithSource.withContext].
+/// See [Logger.withContext].
 final class LoggerWithSourceAndContext<T extends Object?> extends SubLogger {
   final Object? _source;
   final String Function(T context, String message) format;
@@ -51,28 +51,28 @@ final class LoggerWithSourceAndContext<T extends Object?> extends SubLogger {
 
   @override
   // ignore: avoid_setters_without_getters
-  void _setMinLevel(MinLevel value) {
-    _v = _selectLog(Level.verbose, value);
-    _d = _selectLog(Level.debug, value);
-    _i = _selectLog(Level.info, value);
-    _w = _selectLog(Level.warning, value);
-    _e = _selectLog(Level.error, value);
-    _c = _selectLog(Level.critical, value);
+  void _setLevel(LogLevel value) {
+    _v = _selectLog(LoggerLevel._verbose, value);
+    _d = _selectLog(LoggerLevel._debug, value);
+    _i = _selectLog(LoggerLevel._info, value);
+    _w = _selectLog(LoggerLevel._warning, value);
+    _e = _selectLog(LoggerLevel._error, value);
+    _c = _selectLog(LoggerLevel._critical, value);
   }
 
   LoggerWithSourceAndContextFunction<T> _selectLog(
-    Level level,
-    MinLevel minLevel,
+    LoggerLevel loggerLevel,
+    LogLevel logLevel,
   ) =>
-      minLevel <= level ? _log(_logger[level], format) : _noLog;
+      logLevel <= loggerLevel ? _log(_logger[loggerLevel], format) : _noLog;
 
   @pragma('vm:prefer-inline')
   static bool _noLog(
     void context,
-    Object? message, [
+    Object? message, {
     Object? error,
     StackTrace? stackTrace,
-  ]) =>
+  }) =>
       true;
 
   LoggerWithSourceAndContextFunction<T> _log(
@@ -80,11 +80,11 @@ final class LoggerWithSourceAndContext<T extends Object?> extends SubLogger {
     String Function(T context, String message) format,
   ) {
     _resolvedSource ??= Logger.resolveToString(_source);
-    return (context, message, [error, stackTrace]) => logger._realLog(
+    return (context, message, {error, stackTrace}) => logger._realLog(
           _resolvedSource,
           format(context, Logger.resolveToString(message) ?? ''),
-          error,
-          stackTrace,
+          error: error,
+          stackTrace: stackTrace,
         );
   }
 }

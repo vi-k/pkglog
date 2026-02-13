@@ -22,15 +22,15 @@
             "request": "launch",
             "type": "dart",
             "program": "test/pkglog_test_asserts.dart",
-            "args": [
-                "--enable-asserts"
-            ]
         },
         {
             "name": "pkglog test asserts (disabled)",
             "request": "launch",
             "type": "dart",
-            "program": "test/pkglog_test_asserts.dart"
+            "program": "test/pkglog_test_asserts.dart",
+            "toolArgs": [
+                "--no-enable-asserts",
+            ],
         }
     ]
 }

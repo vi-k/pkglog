@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -6,9 +7,10 @@ import 'package:pkglog/pkglog.dart';
 
 class MyClass {}
 
-void main() {
-  var log = Logger('pkglog', minLevel: MinLevel.all);
+Future<void> main() async {
+  var log = Logger('pkglog', level: LogLevel.all);
 
+  //
   print('\nDefaults:\n');
 
   log.v('main', 'verbose');
@@ -18,9 +20,10 @@ void main() {
   log.e('main', 'error');
   log.critical('main', 'critical');
 
-  print('\nCustom formatting:\n');
+  //
+  print('\nCustom building:\n');
 
-  log.format = (msg) => '${DateTime.now()} $msg';
+  log.builder = (msg) => '${DateTime.now()} $msg';
 
   log.v('main', 'verbose');
   log.d('main', 'debug');
@@ -29,20 +32,21 @@ void main() {
   log.e('main', 'error');
   log.critical('main', 'critical');
 
-  // Restore default format.
-  log.format = null;
+  // Restore default builder.
+  log.builder = LogMessage.defaultBuilder;
 
+  //
   print('\nAnsi colors:\n');
 
-  final colorLevels = <Level, String>{
-    Level.verbose: '${ansi.bg256Gray8}${ansi.fg256Rgb000}',
-    Level.debug: '${ansi.bg256Gray12}${ansi.fg256Rgb000}',
-    Level.info: '${ansi.bg256Rgb345}${ansi.fg256Rgb000}',
-    Level.warning: '${ansi.bg256Rgb440}${ansi.fg256Rgb000}',
-    Level.error: '${ansi.bg256Rgb400}${ansi.fg256Rgb000}',
-    Level.critical: '${ansi.bg256Rgb300}${ansi.fg256Rgb550}',
+  final colorLevels = <LoggerLevel, String>{
+    LogLevel.verbose: '${ansi.bg256Gray8}${ansi.fg256Rgb000}',
+    LogLevel.debug: '${ansi.bg256Gray12}${ansi.fg256Rgb000}',
+    LogLevel.info: '${ansi.bg256Rgb345}${ansi.fg256Rgb000}',
+    LogLevel.warning: '${ansi.bg256Rgb440}${ansi.fg256Rgb000}',
+    LogLevel.error: '${ansi.bg256Rgb400}${ansi.fg256Rgb000}',
+    LogLevel.critical: '${ansi.bg256Rgb300}${ansi.fg256Rgb550}',
   };
-  log.format =
+  log.builder =
       (msg) => '${colorLevels[msg.level]}[${msg.level.shortName}]${ansi.reset}'
           ' ${msg.package} |'
           '${msg.source == null ? '' : ' ${msg.source} |'}'
@@ -56,31 +60,32 @@ void main() {
   log.e('main', 'error');
   log.critical('main', 'critical');
 
-  // Restore default format.
-  log.format = null;
+  // Restore default builder.
+  log.builder = LogMessage.defaultBuilder;
 
+  //
   print('\nCustom printing:\n');
 
-  for (final level in Level.values) {
+  for (final level in LoggerLevel.values) {
     final printer = ansi.AnsiPrinter(
       ansiCodesEnabled: !Platform.isIOS,
       defaultState: ansi.SgrPlainState(
         foreground: switch (level) {
-          Level.verbose => const ansi.Color256(ansi.Colors.gray8),
-          Level.debug => const ansi.Color256(ansi.Colors.gray12),
-          Level.info => const ansi.Color256(ansi.Colors.rgb345),
-          Level.warning => const ansi.Color256(ansi.Colors.rgb440),
-          Level.error => const ansi.Color256(ansi.Colors.rgb400),
-          Level.critical => const ansi.Color256(ansi.Colors.rgb550),
+          LogLevel.verbose => const ansi.Color256(ansi.Colors.gray8),
+          LogLevel.debug => const ansi.Color256(ansi.Colors.gray12),
+          LogLevel.info => const ansi.Color256(ansi.Colors.rgb345),
+          LogLevel.warning => const ansi.Color256(ansi.Colors.rgb440),
+          LogLevel.error => const ansi.Color256(ansi.Colors.rgb400),
+          LogLevel.critical => const ansi.Color256(ansi.Colors.rgb550),
         },
         background: switch (level) {
-          Level.critical => const ansi.Color256(ansi.Colors.rgb300),
+          LogLevel.critical => const ansi.Color256(ansi.Colors.rgb300),
           _ => null,
         },
       ),
     );
 
-    log[level].print = printer.print;
+    log[level].printer = printer.print;
   }
 
   log.v('main', 'verbose');
@@ -91,11 +96,12 @@ void main() {
   log.critical('main', 'critical');
 
   // Restore default print.
-  log.print = print;
+  log.printer = print;
 
+  //
   print('\nDeferred parameter computation:\n');
 
-  log.minLevel = MinLevel.info;
+  log.level = LogLevel.info;
   var counter = 0;
 
   log.v(
@@ -123,25 +129,34 @@ void main() {
     () => 'critical (#${++counter})', // counter=8
   );
 
+  //
   print('\nAuto stack trace:\n');
 
-  log.minLevel = MinLevel.error;
+  log.level = LogLevel.error;
 
   log.v('main', 'verbose');
   log.d('main', 'debug');
   log.i('main', 'info');
   log.w('main', 'warning');
-  log.e('main', 'error', Exception('test')); // StackTrace.current
+  log.e(
+    'main',
+    'error',
+    error: Exception('test'), // auto stack trace
+  );
   try {
     throw StateError('test');
   } on Object catch (error) {
-    // The stack trace will be taken from Error.
-    log.critical('main', 'critical', error);
+    log.critical(
+      'main',
+      'critical',
+      error: error, // the stack trace will be taken from `Error`
+    );
   }
 
+  //
   print('\nDisable logging completely:\n');
 
-  log.minLevel = MinLevel.off;
+  log.level = LogLevel.off;
 
   log.v('main', 'verbose');
   log.d('main', 'debug');
@@ -150,9 +165,10 @@ void main() {
   log.e('main', 'error');
   log.critical('main', 'critical');
 
+  //
   print('\nDisabling the logger using asserts:\n');
 
-  log.minLevel = MinLevel.all;
+  log.level = LogLevel.all;
 
   assert(log.v('main', 'verbose'));
   assert(log.d('main', 'debug'));
@@ -161,6 +177,7 @@ void main() {
   assert(log.e('main', 'error'));
   assert(log.critical('main', 'critical'));
 
+  //
   print('\nEnabling the logger using compile environment:\n');
 
   const logIsEnabled = bool.fromEnvironment('logging');
@@ -172,36 +189,115 @@ void main() {
   logIsEnabled && log.e('main', 'error');
   logIsEnabled && log.critical('main', 'critical');
 
+  //
   print('\nAccess to level logger:\n');
 
-  log[Level.info].format =
+  log.level = LogLevel.info;
+
+  log[LogLevel.info].builder =
       (msg) => '${msg.level.name.toUpperCase()}: ${msg.message}';
 
-  log[Level.info].print =
-      (msg) => print('${ansi.fgGreen}${msg.text}${ansi.reset}');
+  log[LogLevel.info].printer =
+      (msg) => print('${ansi.fgGreen}$msg${ansi.reset}');
 
-  log[Level.info].log('main', 'info');
+  log[LogLevel.info].log('main', 'info');
 
+  print('debug enabled: ${log[LogLevel.debug].isEnabled}');
+  print('info enabled: ${log[LogLevel.info].isEnabled}');
+
+  //
   print('\nSub loggers:\n');
 
-  log = Logger('pkglog', minLevel: MinLevel.all);
+  log = Logger('pkglog', level: LogLevel.all);
   log.i(MyClass, 'info');
 
-  final subLog1 = log.withSource(MyClass);
+  final subLog1 = log.withSource(
+    MyClass,
+    format: (message) => 'formatted: $message',
+  );
   subLog1.i('info');
 
-  final subLog2 = subLog1.withFormatting(
-    (message) => 'formatted: $message',
-  );
-  subLog2.i('info');
-
-  final subLog3 = subLog1.withContext<String>(
+  final subLog2 = log.withContext<String>(
+    MyClass,
     (method, message) => '$method: $message',
   );
-  subLog3.i('init', 'info');
+  subLog2.i('init', 'info');
 
-  final subLog4 = subLog1.withContext<Map<String, Object?>>(
+  final subLog3 = log.withContext<Map<String, Object?>>(
+    MyClass,
     (context, message) => '$message: ${jsonEncode(context)}',
   );
-  subLog4.i({'method': 'init', 'id': 1}, 'info');
+  subLog3.i({'method': 'init', 'id': 1}, 'info');
+
+  //
+  print('\nScopes: levels:\n');
+
+  log.level = LogLevel.all;
+
+  Logger.commonScope(
+    level: LogLevel.debug,
+    () {
+      log.v('scope#1', 'verbose'); // -
+      log.d('scope#1', 'debug'); // +
+      log.i('scope#1', 'info'); // +
+
+      log.scope(level: LogLevel.info, () {
+        log.v('scope#2', 'verbose'); // -
+        log.d('scope#2', 'debug'); // -
+        log.i('scope#2', 'info'); // +
+
+        /// Silent mode = LogLevel.off.
+        log.silent(() {
+          log.v('scope#3', 'verbose'); // -
+          log.d('scope#3', 'debug'); // -
+          log.i('scope#3', 'info'); // -
+
+          /// You cannot set a level lower than the current one.
+          log.scope(level: LogLevel.debug, () {
+            log.v('scope#3', 'verbose'); // -
+            log.d('scope#3', 'debug'); // -
+            log.i('scope#3', 'info'); // -
+          });
+        });
+      });
+    },
+  );
+  log.v('main', 'verbose'); // +
+  log.d('main', 'debug'); // +
+  log.i('main', 'info'); // +
+
+  //
+  print('\nScopes: builders and printers:\n');
+
+  Logger.commonScope(
+    builder: (msg) => '(built in scope #1) $msg',
+    printer: (text) => print('(printed in scope #1) $text'),
+    () {
+      log.i('scope#1', 'info');
+
+      log.scope(
+        builder: (msg) => '(built in scope #2) $msg',
+        printer: (text) => print('(printed in scope #2) $text'),
+        () {
+          log.i('scope#2', 'info');
+
+          log.scope(
+            builder: (msg) => '(built in scope #3) $msg',
+            printer: (text) => print('(printed in scope #3) $text'),
+            () {
+              log.i('scope#3', 'info');
+
+              // Asynchronous logging.
+              Future(() {
+                log.i('scope#3', 'future info');
+              });
+            },
+          );
+        },
+      );
+    },
+  );
+  log.i('main', 'info');
+  // Wait for asynchronous logging "future info".
+  await Future(() {});
 }

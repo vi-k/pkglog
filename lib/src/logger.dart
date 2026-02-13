@@ -1,4 +1,7 @@
 import 'dart:async';
+import 'dart:core';
+
+import 'package:meta/meta.dart';
 
 part 'log_message.dart';
 part 'log_error.dart';
@@ -10,10 +13,10 @@ part 'sub_loggers/logger_with_source_and_context.dart';
 
 typedef LogFunction = bool Function(
   Object? source,
-  Object? message, [
+  Object? message, {
   Object? error,
   StackTrace? stackTrace,
-]);
+});
 
 /// Main class for logging.
 ///
@@ -22,7 +25,7 @@ typedef LogFunction = bool Function(
 ///
 /// Example:
 /// ```dart
-/// final log = Logger('my_package', minLevel: MinLevel.debug);
+/// final log = Logger('my_package', level: LogLevel.debug);
 /// log.d('source', 'message');
 /// ```
 final class Logger {
@@ -34,50 +37,91 @@ final class Logger {
   });
 
   final String package;
-  late MinLevel _minLevel;
+  late LogLevel _level;
 
   /// Creates a new [Logger].
   ///
   /// [package] is the name of the package.
-  /// [minLevel] is the minimum log level.
-  Logger(this.package, {MinLevel minLevel = MinLevel.critical}) {
+  /// [level] is the minimum log level.
+  Logger(this.package, {LogLevel level = LogLevel.critical}) {
     _loggers = [_v, _d, _i, _w, _e, _c];
     for (final logger in _loggers) {
       logger._logger = this;
     }
-    this.minLevel = minLevel;
+    this.level = level;
   }
 
-  final LevelLogger _v = LevelLogger._(Level.verbose);
-  final LevelLogger _d = LevelLogger._(Level.debug);
-  final LevelLogger _i = LevelLogger._(Level.info);
-  final LevelLogger _w = LevelLogger._(Level.warning);
-  final LevelLogger _e = LevelLogger._(Level.error);
-  final LevelLogger _c = LevelLogger._(Level.critical);
+  final LevelLogger _v = LevelLogger._(LogLevel.verbose);
+  final LevelLogger _d = LevelLogger._(LogLevel.debug);
+  final LevelLogger _i = LevelLogger._(LogLevel.info);
+  final LevelLogger _w = LevelLogger._(LogLevel.warning);
+  final LevelLogger _e = LevelLogger._(LogLevel.error);
+  final LevelLogger _c = LevelLogger._(LogLevel.critical);
 
   late final List<LevelLogger> _loggers;
   final List<WeakReference<SubLogger>> _subLoggers = [];
 
-  // LogFunction _v = _noLog;
-  // LogFunction _d = _noLog;
-  // LogFunction _i = _noLog;
-  // LogFunction _w = _noLog;
-  // LogFunction _e = _noLog;
-  // LogFunction _c = _noLog;
+  @visibleForTesting
+  int get subLoggersCount => _subLoggers.length;
 
-  int get $subLoggersCount => _subLoggers.length;
+  bool get isEnabled => _level != LogLevel.off;
 
-  bool get isEnabled => _minLevel != MinLevel.off;
-
-  /// Returns a sub-logger with the predefined [source].
+  /// Returns a sub-logger with the predefined source and custom message
+  /// formatting.
   ///
   /// The source is calculated lazily when the first message is actually
   /// logged.
-  LoggerWithSource withSource(Object? source) {
+  LoggerWithSource withSource(
+    Object? source, {
+    String Function(String)? format,
+  }) {
     final sublogger = LoggerWithSource._(
       this, //
-      level: _minLevel,
+      level: _level,
       source: source,
+      format: format,
+    );
+    _addSubLogger(sublogger);
+    return sublogger;
+  }
+
+  /// Returns a sub-logger with the predefined source and custom message
+  /// formatting with additional context from logging functions.
+  ///
+  /// ```dart
+  /// final log = Logger('pkglog', level: LogLevel.all);
+  /// final subLog = log.withContext<String>(
+  ///     MyClass,
+  ///     (method, message) => '$method | $message',
+  /// );
+  ///
+  /// subLog.i('init', 'info');
+  ///
+  /// // [i] my_package | MyClass | init | info
+  /// ```
+  ///
+  /// or:
+  ///
+  /// ```dart
+  /// final log = Logger('pkglog', level: LogLevel.all);
+  /// final subLog = log.withContext<Map<String, Object?>>(
+  ///     MyClass,
+  ///     (context, message) => '$message: ${jsonEncode(context)}',
+  /// );
+  ///
+  /// subLog.i({'method': 'init', 'id': 1}, 'info');
+  ///
+  /// // [i] my_package | MyClass | info: {"method":"init","id":1}
+  /// ```
+  LoggerWithSourceAndContext<T> withContext<T extends Object?>(
+    Object? source,
+    String Function(T context, String message) format,
+  ) {
+    final sublogger = LoggerWithSourceAndContext._(
+      this,
+      source: source,
+      format: format,
+      level: _level,
     );
     _addSubLogger(sublogger);
     return sublogger;
@@ -107,68 +151,116 @@ final class Logger {
   LogFunction get critical => _c.log;
 
   /// Returns the [LevelLogger] for the given [level].
-  LevelLogger operator [](Level level) => _loggers[level.index];
+  LevelLogger operator [](LoggerLevel level) => _loggers[level.index];
 
   /// Sets the minimum log level.
   ///
   /// ```dart
   /// // Only errors will be logged.
-  /// log.minLevel = MinLevel.error;
+  /// log.level = LogLevel.error;
   ///
   /// // Errors and warnings will be logged.
-  /// log.minLevel = MinLevel.warning;
+  /// log.level = LogLevel.warning;
   /// ```
   // ignore: avoid_setters_without_getters
-  set minLevel(MinLevel value) {
-    _minLevel = value;
-    for (final level in Level.values) {
+  set level(LogLevel value) {
+    _level = value;
+    for (final level in LoggerLevel.values) {
       _loggers[level.index]._toggle(value <= level);
     }
 
     for (final subLogger in _subLoggers) {
-      subLogger.target?._setMinLevel(value);
+      subLogger.target?._setLevel(value);
     }
   }
 
-  /// Sets the log formatter.
+  /// Sets the log message builder.
   ///
   /// ```dart
-  /// // Use the default message formatter.
-  /// log.format = Logger.buildDefaultMessage;
+  /// // Use the default message builder.
+  /// log.builder = LogMessage.defaultBuilder;
   ///
-  /// // Use a custom message formatter.
-  /// log.format = (level, package, source, message, error) {
-  ///   return '${level.name.toUpperCase()}: $message';
+  /// // Use a custom message builder.
+  /// log.builder = (msg) {
+  ///   return '${msg.level.name.toUpperCase()}: ${msg.message}';
   /// };
   /// ```
   // ignore: avoid_setters_without_getters
-  set format(LogFormatter? formatter) {
+  set builder(LogBuilder builder) {
     for (final logger in _loggers) {
-      logger.format = formatter;
+      logger.builder = builder;
     }
   }
 
   /// Sets the log printer.
   ///
   /// ```dart
-  /// // Use `print` by default.
-  /// log.print = print;
+  /// // Use `printer` by default.
+  /// log.printer = print;
   ///
   /// // Use a custom log printer.
-  /// log.print = stderr.writeln;
+  /// log.printer = stderr.writeln;
+  ///
+  /// // Colorize log messages.
+  /// log.printer =
+  ///     (text) => print(
+  ///       text.split('\n').map((line) => '\x1B[32m$line\x1B[0m').join('\n'),
+  ///     );
   /// ```
   // ignore: avoid_setters_without_getters
-  set print(LogPrinter? printer) {
+  set printer(LogPrinter? printer) {
     for (final logger in _loggers) {
-      logger.print = printer;
+      logger.printer = printer;
     }
   }
+
+  R scope<R>(
+    R Function() callback, {
+    LogLevel? level,
+    LogBuilder? builder,
+    LogPrinter? printer = _defaultPrinter,
+  }) =>
+      runZoned(
+        callback,
+        zoneValues: {
+          if (level != null)
+            (_zoneLevelTag, this): switch (
+                Zone.current[(_zoneLevelTag, this)]) {
+              final LogLevel zoneLevel => zoneLevel > level ? zoneLevel : level,
+              _ => level,
+            },
+          if (builder != null) (_zoneBuilderTag, this): builder,
+          if (printer != _defaultPrinter)
+            (_zonePrinterTag, this): printer ?? 42,
+        },
+      );
+
+  R silent<R>(R Function() callback) => scope(callback, level: LogLevel.off);
+
+  static R commonScope<R>(
+    R Function() callback, {
+    LogLevel? level,
+    LogBuilder? builder,
+    LogPrinter? printer = _defaultPrinter,
+  }) =>
+      runZoned(
+        callback,
+        zoneValues: {
+          if (level != null)
+            _zoneLevelTag: switch (Zone.current[_zoneLevelTag]) {
+              final LogLevel zoneLevel => zoneLevel > level ? zoneLevel : level,
+              _ => level,
+            },
+          if (builder != null) _zoneBuilderTag: builder,
+          if (printer != _defaultPrinter) _zonePrinterTag: printer ?? 42,
+        },
+      );
 
   /// Resolve the [obj] to the object instance.
   ///
   /// If the object is a function, it is called and the result is returned
   ///
-  /// Can be used for custom formatting in [LoggerWithSource.withContext].
+  /// Can be used for custom formatting in [Logger.withContext].
   ///
   /// ```dart
   /// final _log = log
@@ -198,7 +290,7 @@ final class Logger {
   /// If the object is a function, it is called and the result is converted to
   /// a string.
   ///
-  /// Can be used for custom formatting in [LoggerWithSource.withContext].
+  /// Can be used for custom formatting in [Logger.withContext].
   ///
   /// ```dart
   /// final _log = log
@@ -228,17 +320,4 @@ final class Logger {
       null => null,
     };
   }
-
-  /// Builds the default log message.
-  ///
-  /// ```dart
-  /// log.format = (level, package, source, message, error) {
-  ///   final msg =
-  ///       Logger.buildDefaultMessage(level, package, source, message, error);
-  ///   return level.isError
-  ///       ? '\x1B[31m$msg\x1B[0m'
-  ///       : '$msg';
-  /// };
-  /// ```
-  static void defaultPrinter(LogMessage msg) => Zone.current.print(msg.text);
 }

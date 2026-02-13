@@ -10,10 +10,10 @@ final class TestFailure implements Exception {
 /// separately via `dart run`:
 ///
 /// ```
-/// dart run test/pkglog_test_asserts.dart
+/// dart run --no-enable-asserts test/pkglog_test_asserts.dart
 /// dart run --enable-asserts test/pkglog_test_asserts.dart
 /// ```
-void main() {
+Future<void> main() async {
   var assertsEnabled = false;
 
   assert(() {
@@ -27,8 +27,7 @@ void main() {
   );
 
   final buf = <String>[];
-  final log = Logger('test', minLevel: MinLevel.all)
-    ..print = (msg) => buf.add(msg.text);
+  final log = Logger('test', level: LogLevel.all)..printer = buf.add;
   var counter = 0;
 
   String Function() checkCalc(String msg) => () {
@@ -88,7 +87,7 @@ void main() {
       assertsEnabled ? expected : <String>[];
 
   test('all levels', () {
-    log.minLevel = MinLevel.all;
+    log.level = LogLevel.all;
     logAll();
 
     expectList(
@@ -102,7 +101,10 @@ void main() {
         '[!] test | main | critical',
       ]),
     );
-    print('result for MinLevel.all:\n${buf.isEmpty ? '-' : buf.join('\n')}');
+    print(
+      'result for ${LogLevel.all}:' //
+      '\n${buf.isEmpty ? '-' : buf.join('\n')}',
+    );
 
     verificationOfParameterCalculation();
     print('counter: $counter');
@@ -112,7 +114,7 @@ void main() {
   });
 
   test('verbose level', () {
-    log.minLevel = MinLevel.verbose; // == MinLevel.all
+    log.level = LogLevel.verbose; // == LogLevel.all
     logAll();
     expectList(
       buf,
@@ -130,7 +132,7 @@ void main() {
   });
 
   test('debug level', () {
-    log.minLevel = MinLevel.debug;
+    log.level = LogLevel.debug;
     logAll();
     expectList(
       buf,
@@ -147,7 +149,7 @@ void main() {
   });
 
   test('info level', () {
-    log.minLevel = MinLevel.info;
+    log.level = LogLevel.info;
     logAll();
     expectList(
       buf,
@@ -163,7 +165,7 @@ void main() {
   });
 
   test('warning level', () {
-    log.minLevel = MinLevel.warning;
+    log.level = LogLevel.warning;
     logAll();
     expectList(
       buf,
@@ -178,7 +180,7 @@ void main() {
   });
 
   test('error level', () {
-    log.minLevel = MinLevel.error;
+    log.level = LogLevel.error;
     logAll();
     expectList(
       buf,
@@ -192,7 +194,7 @@ void main() {
   });
 
   test('critical level', () {
-    log.minLevel = MinLevel.critical;
+    log.level = LogLevel.critical;
     logAll();
     expectList(
       buf,
@@ -205,7 +207,7 @@ void main() {
   });
 
   test('off', () {
-    log.minLevel = MinLevel.off;
+    log.level = LogLevel.off;
     logAll();
     expectList(buf, <String>[]);
     verificationOfParameterCalculation();

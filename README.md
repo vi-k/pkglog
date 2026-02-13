@@ -11,6 +11,7 @@
 мощных логеров для приложений я не хотел. Для отладки пакета они обычно
 слишком многословны и перегружены функциями, которые библиотеке не нужны.
 
+
 ## Why?
 
 Итак, суть логера в том, что бы легко включить его для отладки и тестирования
@@ -30,7 +31,7 @@ log.i('main', 'info');
 ```dart
 void i(String package, String message) {
   if (level <= Level.info) {
-    print(format(Level.info, package, message));
+    print(...);
   }
 }
 ```
@@ -68,7 +69,7 @@ if (logIsEnabled) {
 что позволяет использовать их в `assert` и `&&` цепочках.
 
 ```dart
-final log = Logger('pkglog', minLevel: MinLevel.all);
+final log = Logger('pkglog', level: LogLevel.all);
 
 // ...
 
@@ -135,6 +136,7 @@ log.d('main', () {
 
 ## Usage
 
+
 ### Basic Usage
 
 Create a `Logger` instance for your package. It is recommended to keep a static
@@ -144,7 +146,7 @@ or final instance to reuse it throughout your package.
 import 'package:pkglog/pkglog.dart';
 
 // Create a logger for your package
-final log = Logger('my_package', minLevel: MinLevel.critical);
+final log = Logger('my_package', level: LogLevel.critical);
 
 void main() {
   log.v('Verbose message');
@@ -158,12 +160,13 @@ void main() {
 
 Please note that by default, only critical errors are logged in the logger.
 This is the correct setting when developing a package. In your case, it may
-even be necessary to disable the logger completely: `MinLevel.off`. Enable
+even be necessary to disable the logger completely: `LogLevel.off`. Enable
 other logging levels only in your tests and examples.
 
 ```dart
-log.minLevel = MinLevel.all;
+log.level = LogLevel.all;
 ```
+
 
 ### Performance
 
@@ -190,6 +193,7 @@ logIsEnabled && log.d('main', 'Debug message') && log.i('main', 'Info message');
 
 Достигается это тем, что все функции логирования всегда возвращают `true`,
 что позволяет использовать их в `assert` и `&&` цепочках.
+
 
 ### Log levels
 
@@ -249,9 +253,10 @@ logIsEnabled && log.d('main', 'Debug message') && log.i('main', 'Info message');
       исключений или `FlutterError.reportError`, или совместное их
       использование.
 
-## Custom formatting and printing
 
-По умолчанию `pkglog` использует функцию `print` для вывода логов и форматирует
+## Custom building and printing
+
+По умолчанию `pkglog` использует функцию `print` для вывода логов и строит
 сообщения в следующем виде:
 
 ```
@@ -262,65 +267,60 @@ stacktrace
 Скорее всего, для разработки пакета этого будет достаточно. Но если разработчик
 хочет скорректировать лог, добавить данные или предоставить возможность
 пользователю пакета изменить форматирование или способ вывода, то это можно
-сделать, установив собственные методы `format` и `print`.
+сделать, установив собственные методы `builder` и `printer`.
 
 ```dart
-log.format = (level, package, source, message, error) {
+log.builder = (msg) {
   return
-      '${DateTime.now()} [${level.shortName}] $package |'
-      '${source == null ? '' : ' $source |'}'
-      ' $message'
-      '${error == null ? '' : ': $error'}';
+      '${DateTime.now()} [${msg.level.shortName}] ${msg.package} |'
+      '${msg.source == null ? '' : ' ${msg.source} |'}'
+      ' ${msg.message}'
+      '${msg.error == null ? '' : ': ${msg.error}'}';
 };
 
 log.print = stderr.writeln;
 ```
 
-`source` и `message` придут в функцию уже преобразованными в строку. Если
-`source` был `null`, то он останется `null`. Но если `message` был `null`, то
-он превратится в пустую строку. По этой причине я не рекомендую использовать
-`message` для передачи данных, которые могут быть `null`. Это сделано
-специально, чтобы вы написали сообщение, а не просто отправили данные без
-пояснений:
+Параметры `source` и `message` придут в функцию уже преобразованными в строку.
+Если `source` был `null`, то он останется `null`. Но если `message` был `null`,
+то он превратится в пустую строку. По этой причине я не рекомендую передавать
+в функции логирования в чистом виде объекты, которые могут быть `null`. Это
+сделано сознательно, чтобы вы написали сообщение, а не просто отправили данные
+без пояснений:
 
 ```dart
 log.i('main', () => 'Data received: $data');
 ```
 
-Функцию печати сообщения можно разместить и внутри `format`, а `print`
+Функцию печати сообщения можно разместить и внутри `builder`, а `printer`
 отключить:
 
 ```dart
-log.format = (level, package, source, message, error, stacktrace) {
-  final text = Logger.buildDefaultMessage(
-    level, package, source, //
-    message, error, stacktrace,
-  );
-  final out = level < Level.error ? stdin : stderr;
-  out.writeln(text);
+log.builder = (msg) {
+  final out = msg.level.isError ? stderr : stdout;
+  out.writeln(msg.toString());
   return '';
 };
-
 log.print = null;
 ```
 
-С помощью `Logger.format` и `Logger.print` настраивается общий вывод для всех
-уровней логирования. Но можно настроить каждую уровень логирования отдельно:
+С помощью `Logger.builder` и `Logger.printer` настраивается общий вывод для
+всех уровней логирования. Но можно настроить каждый уровень логирования
+отдельно:
 
 ```dart
-log.print = stdout.writeln;
-log[Level.error].print = stderr.writeln;
-log[Level.critical].print = stderr.writeln;
+log.printer = stdout.writeln;
+log[Level.error].printer = stderr.writeln;
+log[Level.critical].printer = stderr.writeln;
 ```
 
 > [!IMPORTANT]
 > Разумеется, можно использовать любой другой способ вывода. Например,
 > отправлять логи в файл, в сеть и т.д. Но `pkglog` не разруливает асинхронный
-> код! Если вам нужна такая возможность, то лучше рассмотрите какой-нибудь
-> другой логгер, который умеет это делать, или реализуйте асинхронность
-> самостоятельно. Но не забудьте, что обычного добавления `async` вашей функции
-> `print` не будет достаточно. `pkglog` не будет ждать завершения асинхронных
-> вызовов, и события начнут приходить параллельно. Сила `pkglog` в максимальной
+> код! Если вам нужна такая возможность, то реализуйте асинхронность
+> самостоятельно. Не забудьте, что обычного добавления `async` вашей функции
+> `printer` не будет достаточно. `pkglog` не ждёт завершения асинхронных
+> вызовов, и события будут приходить параллельно. Сила `pkglog` в максимальной
 > простоте и эффективности, а не в широкой функциональности. `pkglog`
 > сознательно не работает с асинхронным кодом.
 
@@ -380,9 +380,10 @@ final sw = Stopwatch()..start();
 
 //...
 
-final _log = log
-    .withSource('event processing')
-    .withFormatting((message) => '${sw.elapsed} | $message');
+final _log = log.withSource(
+    'event processing',
+    format: (message) => '${sw.elapsed} | $message',
+);
 
 _log.i('info');
 
@@ -392,16 +393,19 @@ _log.i('info');
 или форматирование с передаваемым пользователем типизированным параметром:
 
 ```dart
-final _log = log
-    .withSource(MyClass)
-    .withContext<String>((method, message) => '$method | $message');
+final _log = log.withContext<String>(
+    MyClass,
+    (method, message) => '$method | $message',
+);
 
 _log.i('dispose', 'info');
 
 // [i] pkglog | MyClass | dispose | info
 ```
 
+
 ## Package user interaction
+
 
 ### Настройка логирования пользователем
 
@@ -503,6 +507,7 @@ for (final level in Level.values) {
 самому делать такое в своём пакете вряд ли может понадобиться (хотя и не
 исключено), но дать возможность пользователю сделать это самостоятельно, если
 ваши логи для него важны - это хорошая идея.
+
 
 ### Экспорт логера
 

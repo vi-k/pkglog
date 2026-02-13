@@ -7,39 +7,31 @@ part of 'logger.dart';
 /// [source] is the source of the log message.
 /// [message] is the log message.
 /// [error] is the error object.
-base class LogMessage {
+final class LogMessage {
   LogMessage(
     this.level,
     this.package,
-    this.source,
-    this.message,
+    this.unresolvedSource,
+    this.unresolvedMessage,
     this.error,
   );
 
-  final Level level;
+  final LoggerLevel level;
   final String package;
-  final String? source;
-  final String message;
+  final Object? unresolvedSource;
+  final Object? unresolvedMessage;
   final LogError? error;
 
-  String get text => toString();
-  String? _text;
-  set text(String value) {
-    _text = value;
-  }
+  late final String? source = Logger.resolveToString(unresolvedSource);
+  late final String message =
+      Logger.resolveToString(unresolvedMessage) ?? 'null';
+
+  static String defaultBuilder(LogMessage msg) => msg.toString();
 
   /// Builds the default log message.
   @override
-  String toString() => _text ??= '[${level.shortName}] $package |'
+  String toString() => '[${level.shortName}] $package |'
       '${source == null ? '' : ' $source |'}'
       ' $message'
       '${error == null ? '' : ': $error'}';
 }
-
-typedef LogMessageBuilder = LogMessage Function(
-  Level level,
-  String package,
-  String? source,
-  String message,
-  LogError? error,
-);

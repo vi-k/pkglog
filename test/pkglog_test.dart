@@ -1,6 +1,3 @@
-@TestOn('vm')
-library;
-
 import 'dart:async';
 
 import 'package:leak_tracker/leak_tracker.dart';
@@ -18,8 +15,7 @@ void main() {
     setUp(() {
       counter = 0;
       buf.clear();
-      log = Logger('test', minLevel: MinLevel.all)
-        ..print = (msg) => buf.add(msg.text);
+      log = Logger('test', level: LogLevel.all)..printer = buf.add;
     });
 
     String Function() checkCalc(String msg) => () {
@@ -48,7 +44,7 @@ void main() {
         }
 
         test('all levels', () {
-          log.minLevel = MinLevel.all;
+          log.level = LogLevel.all;
           logAll();
           expect(buf, [
             '[v] test | main | verbose',
@@ -63,7 +59,7 @@ void main() {
         });
 
         test('verbose level', () {
-          log.minLevel = MinLevel.verbose; // == Level.all
+          log.level = LogLevel.verbose; // == Level.all
           logAll();
           expect(buf, [
             '[v] test | main | verbose',
@@ -78,7 +74,7 @@ void main() {
         });
 
         test('debug level', () {
-          log.minLevel = MinLevel.debug;
+          log.level = LogLevel.debug;
           logAll();
           expect(buf, [
             '[d] test | main | debug',
@@ -92,7 +88,7 @@ void main() {
         });
 
         test('info level', () {
-          log.minLevel = MinLevel.info;
+          log.level = LogLevel.info;
           logAll();
           expect(buf, [
             '[i] test | main | info',
@@ -105,7 +101,7 @@ void main() {
         });
 
         test('warning level', () {
-          log.minLevel = MinLevel.warning;
+          log.level = LogLevel.warning;
           logAll();
           expect(buf, [
             '[w] test | main | warning',
@@ -117,7 +113,7 @@ void main() {
         });
 
         test('error level', () {
-          log.minLevel = MinLevel.error;
+          log.level = LogLevel.error;
           logAll();
           expect(buf, [
             '[e] test | main | error',
@@ -128,7 +124,7 @@ void main() {
         });
 
         test('critical level', () {
-          log.minLevel = MinLevel.critical;
+          log.level = LogLevel.critical;
           logAll();
           expect(buf, [
             '[!] test | main | critical',
@@ -138,7 +134,7 @@ void main() {
         });
 
         test('off', () {
-          log.minLevel = MinLevel.off;
+          log.level = LogLevel.off;
           logAll();
           expect(buf, <String>[]);
           verificationOfParameterCalculation();
@@ -183,7 +179,7 @@ void main() {
             assertsEnabled ? expected : <String>[];
 
         test('all levels', () {
-          log.minLevel = MinLevel.all;
+          log.level = LogLevel.all;
           logAll();
           expect(
             buf,
@@ -201,7 +197,7 @@ void main() {
         });
 
         test('verbose level', () {
-          log.minLevel = MinLevel.verbose; // == Level.all
+          log.level = LogLevel.verbose; // == Level.all
           logAll();
           expect(
             buf,
@@ -219,7 +215,7 @@ void main() {
         });
 
         test('debug level', () {
-          log.minLevel = MinLevel.debug;
+          log.level = LogLevel.debug;
           logAll();
           expect(
             buf,
@@ -236,7 +232,7 @@ void main() {
         });
 
         test('info level', () {
-          log.minLevel = MinLevel.info;
+          log.level = LogLevel.info;
           logAll();
           expect(
             buf,
@@ -252,7 +248,7 @@ void main() {
         });
 
         test('warning level', () {
-          log.minLevel = MinLevel.warning;
+          log.level = LogLevel.warning;
           logAll();
           expect(
             buf,
@@ -267,7 +263,7 @@ void main() {
         });
 
         test('error level', () {
-          log.minLevel = MinLevel.error;
+          log.level = LogLevel.error;
           logAll();
           expect(
             buf,
@@ -281,7 +277,7 @@ void main() {
         });
 
         test('critical level', () {
-          log.minLevel = MinLevel.critical;
+          log.level = LogLevel.critical;
           logAll();
           expect(
             buf,
@@ -294,7 +290,7 @@ void main() {
         });
 
         test('off', () {
-          log.minLevel = MinLevel.off;
+          log.level = LogLevel.off;
           logAll();
           expect(buf, <String>[]);
           verificationOfParameterCalculation();
@@ -325,7 +321,7 @@ void main() {
         }
 
         test('all levels', () {
-          log.minLevel = MinLevel.all;
+          log.level = LogLevel.all;
           logAll();
           expect(buf, [
             '[v] test | main | verbose',
@@ -340,7 +336,7 @@ void main() {
         });
 
         test('verbose level', () {
-          log.minLevel = MinLevel.verbose; // == Level.all
+          log.level = LogLevel.verbose; // == Level.all
           logAll();
           expect(buf, [
             '[v] test | main | verbose',
@@ -355,7 +351,7 @@ void main() {
         });
 
         test('debug level', () {
-          log.minLevel = MinLevel.debug;
+          log.level = LogLevel.debug;
           logAll();
           expect(buf, [
             '[d] test | main | debug',
@@ -369,7 +365,7 @@ void main() {
         });
 
         test('info level', () {
-          log.minLevel = MinLevel.info;
+          log.level = LogLevel.info;
           logAll();
           expect(buf, [
             '[i] test | main | info',
@@ -382,7 +378,7 @@ void main() {
         });
 
         test('warning level', () {
-          log.minLevel = MinLevel.warning;
+          log.level = LogLevel.warning;
           logAll();
           expect(buf, [
             '[w] test | main | warning',
@@ -394,7 +390,7 @@ void main() {
         });
 
         test('error level', () {
-          log.minLevel = MinLevel.error;
+          log.level = LogLevel.error;
           logAll();
           expect(buf, [
             '[e] test | main | error',
@@ -405,7 +401,7 @@ void main() {
         });
 
         test('critical level', () {
-          log.minLevel = MinLevel.critical;
+          log.level = LogLevel.critical;
           logAll();
           expect(buf, [
             '[!] test | main | critical',
@@ -415,7 +411,7 @@ void main() {
         });
 
         test('off', () {
-          log.minLevel = MinLevel.off;
+          log.level = LogLevel.off;
           logAll();
           expect(buf, <String>[]);
           verificationOfParameterCalculation();
@@ -458,7 +454,7 @@ void main() {
         }
 
         test('all levels', () {
-          log.minLevel = MinLevel.all;
+          log.level = LogLevel.all;
           logAll();
           expect(buf, <String>[]);
           verificationOfParameterCalculation();
@@ -466,7 +462,7 @@ void main() {
         });
 
         test('verbose level', () {
-          log.minLevel = MinLevel.verbose; // == Level.all
+          log.level = LogLevel.verbose; // == Level.all
           logAll();
           expect(buf, <String>[]);
           verificationOfParameterCalculation();
@@ -474,7 +470,7 @@ void main() {
         });
 
         test('debug level', () {
-          log.minLevel = MinLevel.debug;
+          log.level = LogLevel.debug;
           logAll();
           expect(buf, <String>[]);
           verificationOfParameterCalculation();
@@ -482,7 +478,7 @@ void main() {
         });
 
         test('info level', () {
-          log.minLevel = MinLevel.info;
+          log.level = LogLevel.info;
           logAll();
           expect(buf, <String>[]);
           verificationOfParameterCalculation();
@@ -490,7 +486,7 @@ void main() {
         });
 
         test('warning level', () {
-          log.minLevel = MinLevel.warning;
+          log.level = LogLevel.warning;
           logAll();
           expect(buf, <String>[]);
           verificationOfParameterCalculation();
@@ -498,7 +494,7 @@ void main() {
         });
 
         test('error level', () {
-          log.minLevel = MinLevel.error;
+          log.level = LogLevel.error;
           logAll();
           expect(buf, <String>[]);
           verificationOfParameterCalculation();
@@ -506,7 +502,7 @@ void main() {
         });
 
         test('critical level', () {
-          log.minLevel = MinLevel.critical;
+          log.level = LogLevel.critical;
           logAll();
           expect(buf, <String>[]);
           verificationOfParameterCalculation();
@@ -514,7 +510,7 @@ void main() {
         });
 
         test('off', () {
-          log.minLevel = MinLevel.off;
+          log.level = LogLevel.off;
           logAll();
           expect(buf, <String>[]);
           verificationOfParameterCalculation();
@@ -549,7 +545,7 @@ void main() {
           }
 
           test('all levels', () {
-            log.minLevel = MinLevel.all;
+            log.level = LogLevel.all;
             logAll();
             expect(buf, [
               '[v] test | main | verbose',
@@ -565,7 +561,7 @@ void main() {
           });
 
           test('verbose level', () {
-            log.minLevel = MinLevel.verbose; // == Level.all
+            log.level = LogLevel.verbose; // == Level.all
             logAll();
             expect(buf, [
               '[v] test | main | verbose',
@@ -581,7 +577,7 @@ void main() {
           });
 
           test('debug level', () {
-            log.minLevel = MinLevel.debug;
+            log.level = LogLevel.debug;
             logAll();
             expect(buf, [
               '[d] test | main | debug',
@@ -596,7 +592,7 @@ void main() {
           });
 
           test('info level', () {
-            log.minLevel = MinLevel.info;
+            log.level = LogLevel.info;
             logAll();
             expect(buf, [
               '[i] test | main | info',
@@ -610,7 +606,7 @@ void main() {
           });
 
           test('warning level', () {
-            log.minLevel = MinLevel.warning;
+            log.level = LogLevel.warning;
             logAll();
             expect(buf, [
               '[w] test | main | warning',
@@ -623,7 +619,7 @@ void main() {
           });
 
           test('error level', () {
-            log.minLevel = MinLevel.error;
+            log.level = LogLevel.error;
             logAll();
             expect(buf, [
               '[e] test | main | error',
@@ -635,7 +631,7 @@ void main() {
           });
 
           test('critical level', () {
-            log.minLevel = MinLevel.critical;
+            log.level = LogLevel.critical;
             logAll();
             expect(buf, [
               '[!] test | main | critical',
@@ -646,7 +642,7 @@ void main() {
           });
 
           test('off', () {
-            log.minLevel = MinLevel.off;
+            log.level = LogLevel.off;
             logAll();
             expect(buf, <String>[]);
             expect(counter, 0); // source calc
@@ -664,9 +660,10 @@ void main() {
               };
 
           setUp(() {
-            subLog = log
-                .withSource(checkCalc('main'))
-                .withFormatting((msg) => 'formatted: $msg');
+            subLog = log.withSource(
+              checkCalc('main'),
+              format: (msg) => 'formatted: $msg',
+            );
           });
 
           void logAll() {
@@ -689,7 +686,7 @@ void main() {
 
           test('all levels', () {
             expect(counter, 0); // source calc
-            log.minLevel = MinLevel.all;
+            log.level = LogLevel.all;
             logAll();
             expect(buf, [
               '[v] test | main | formatted: verbose',
@@ -705,7 +702,7 @@ void main() {
           });
 
           test('verbose level', () {
-            log.minLevel = MinLevel.verbose; // == Level.all
+            log.level = LogLevel.verbose; // == Level.all
             logAll();
             expect(buf, [
               '[v] test | main | formatted: verbose',
@@ -721,7 +718,7 @@ void main() {
           });
 
           test('debug level', () {
-            log.minLevel = MinLevel.debug;
+            log.level = LogLevel.debug;
             logAll();
             expect(buf, [
               '[d] test | main | formatted: debug',
@@ -736,7 +733,7 @@ void main() {
           });
 
           test('info level', () {
-            log.minLevel = MinLevel.info;
+            log.level = LogLevel.info;
             logAll();
             expect(buf, [
               '[i] test | main | formatted: info',
@@ -750,7 +747,7 @@ void main() {
           });
 
           test('warning level', () {
-            log.minLevel = MinLevel.warning;
+            log.level = LogLevel.warning;
             logAll();
             expect(buf, [
               '[w] test | main | formatted: warning',
@@ -763,7 +760,7 @@ void main() {
           });
 
           test('error level', () {
-            log.minLevel = MinLevel.error;
+            log.level = LogLevel.error;
             logAll();
             expect(buf, [
               '[e] test | main | formatted: error',
@@ -775,7 +772,7 @@ void main() {
           });
 
           test('critical level', () {
-            log.minLevel = MinLevel.critical;
+            log.level = LogLevel.critical;
             logAll();
             expect(buf, [
               '[!] test | main | formatted: critical',
@@ -786,7 +783,7 @@ void main() {
           });
 
           test('off', () {
-            log.minLevel = MinLevel.off;
+            log.level = LogLevel.off;
             logAll();
             expect(buf, <String>[]);
             expect(counter, 0); // source calc
@@ -799,9 +796,10 @@ void main() {
           late LoggerWithSourceAndContext<String> subLog;
 
           setUp(() {
-            subLog = log
-                .withSource(checkCalc('main'))
-                .withContext((method, msg) => '$method | $msg');
+            subLog = log.withContext(
+              checkCalc('main'),
+              (method, msg) => '$method | $msg',
+            );
           });
 
           void logAll() {
@@ -823,7 +821,7 @@ void main() {
           }
 
           test('all levels', () {
-            log.minLevel = MinLevel.all;
+            log.level = LogLevel.all;
             logAll();
             expect(buf, [
               '[v] test | main | init | verbose',
@@ -839,7 +837,7 @@ void main() {
           });
 
           test('verbose level', () {
-            log.minLevel = MinLevel.verbose; // == Level.all
+            log.level = LogLevel.verbose; // == Level.all
             logAll();
             expect(buf, [
               '[v] test | main | init | verbose',
@@ -855,7 +853,7 @@ void main() {
           });
 
           test('debug level', () {
-            log.minLevel = MinLevel.debug;
+            log.level = LogLevel.debug;
             logAll();
             expect(buf, [
               '[d] test | main | init | debug',
@@ -870,7 +868,7 @@ void main() {
           });
 
           test('info level', () {
-            log.minLevel = MinLevel.info;
+            log.level = LogLevel.info;
             logAll();
             expect(buf, [
               '[i] test | main | init | info',
@@ -884,7 +882,7 @@ void main() {
           });
 
           test('warning level', () {
-            log.minLevel = MinLevel.warning;
+            log.level = LogLevel.warning;
             logAll();
             expect(buf, [
               '[w] test | main | init | warning',
@@ -897,7 +895,7 @@ void main() {
           });
 
           test('error level', () {
-            log.minLevel = MinLevel.error;
+            log.level = LogLevel.error;
             logAll();
             expect(buf, [
               '[e] test | main | init | error',
@@ -909,7 +907,7 @@ void main() {
           });
 
           test('critical level', () {
-            log.minLevel = MinLevel.critical;
+            log.level = LogLevel.critical;
             logAll();
             expect(buf, [
               '[!] test | main | init | critical',
@@ -920,7 +918,7 @@ void main() {
           });
 
           test('off', () {
-            log.minLevel = MinLevel.off;
+            log.level = LogLevel.off;
             logAll();
             expect(buf, <String>[]);
             expect(counter, 1); // source calc
@@ -936,11 +934,12 @@ void main() {
       late LoggerWithSourceAndContext<String> subLog2;
 
       setUp(() {
-        final subLog = log.withSource('main');
-        subLog1 = subLog.withFormatting(
-          (message) => 'formatted: $message',
+        subLog1 = log.withSource(
+          'main',
+          format: (message) => 'formatted: $message',
         );
-        subLog2 = subLog.withContext<String>(
+        subLog2 = log.withContext<String>(
+          'main',
           (context, message) => '$context: $message',
         );
       });
@@ -969,7 +968,7 @@ void main() {
       }
 
       test('all levels', () {
-        log.format = (msg) =>
+        log.builder = (msg) =>
             '${msg.level.name.toUpperCase().padRight(8)} [${msg.package}]'
             ' ${msg.source == null ? '' : '${msg.source}:'}'
             ' ${msg.message}';
@@ -999,11 +998,11 @@ void main() {
       });
 
       test('all levels except Level.info', () {
-        log.format = (msg) =>
+        log.builder = (msg) =>
             '${msg.level.name.toUpperCase().padRight(8)} [${msg.package}]'
             ' ${msg.source == null ? '' : '${msg.source}:'}'
             ' ${msg.message}';
-        log[Level.info].format = null;
+        log[LogLevel.info].builder = LogMessage.defaultBuilder;
         logAll();
         expect(buf, [
           'VERBOSE  [test] main: verbose',
@@ -1030,7 +1029,7 @@ void main() {
       });
 
       test('only Level.info', () {
-        log[Level.info].format = (msg) =>
+        log[LogLevel.info].builder = (msg) =>
             '${msg.level.name.toUpperCase().padRight(7)} [${msg.package}]'
             ' ${msg.source == null ? '' : '${msg.source}:'}'
             ' ${msg.message}';
@@ -1065,11 +1064,12 @@ void main() {
       late LoggerWithSourceAndContext<String> subLog2;
 
       setUp(() {
-        final subLog = log.withSource('main');
-        subLog1 = subLog.withFormatting(
-          (message) => 'formatted: $message',
+        subLog1 = log.withSource(
+          'main',
+          format: (message) => 'formatted: $message',
         );
-        subLog2 = subLog.withContext<String>(
+        subLog2 = log.withContext<String>(
+          'main',
           (context, message) => '$context: $message',
         );
       });
@@ -1098,16 +1098,14 @@ void main() {
       }
 
       test('do not print', () {
-        log
-          ..print = null
-          ..format = null;
+        log.printer = null;
         logAll();
         expect(buf, <String>[]);
       });
 
       test('print only Level.debug', () {
-        log.print = null;
-        log[Level.debug].print = (msg) => buf.add(msg.text);
+        log.printer = null;
+        log[LogLevel.debug].printer = buf.add;
         logAll();
         expect(buf, [
           '[d] test | main | debug',
@@ -1119,7 +1117,7 @@ void main() {
       });
 
       test('print all except Level.debug', () {
-        log[Level.debug].print = null;
+        log[LogLevel.debug].printer = null;
         logAll();
         expect(buf, [
           '[v] test | main | verbose',
@@ -1160,7 +1158,7 @@ void main() {
 
         Future<void> check() async {
           final subLog = log.withSource('main');
-          expect(log.$subLoggersCount, 1);
+          expect(log.subLoggersCount, 1);
 
           if (vmAvailable) {
             final classInfo = await findClass(className);
@@ -1192,21 +1190,22 @@ void main() {
         } else {
           await forceGC(fullGcCycles: 2);
         }
-        expect(log.$subLoggersCount, 0);
+        expect(log.subLoggersCount, 0);
       });
 
       test('withFormatting:', () async {
         const className = 'LoggerWithSource';
 
         Future<void> check() async {
-          final subLog = log //
-              .withSource('main')
-              .withFormatting((msg) => 'formatted: $msg');
-          expect(log.$subLoggersCount, 2);
+          final subLog = log.withSource(
+            'main',
+            format: (msg) => 'formatted: $msg',
+          );
+          expect(log.subLoggersCount, 1);
 
           if (vmAvailable) {
             final classInfo1 = await findClass(className);
-            expect(classInfo1?.instancesCurrent, 2);
+            expect(classInfo1?.instancesCurrent, 1);
             await gc();
             final classInfo2 = await findClass(className);
             expect(classInfo2?.instancesCurrent, 1);
@@ -1237,7 +1236,7 @@ void main() {
         } else {
           await forceGC(fullGcCycles: 2);
         }
-        expect(log.$subLoggersCount, 0);
+        expect(log.subLoggersCount, 0);
       });
 
       test('withContext:', () async {
@@ -1246,12 +1245,11 @@ void main() {
         const className = 'LoggerWithSourceAndContext';
 
         Future<void> check() async {
-          final subLog = log //
-              .withSource('main')
-              .withContext<String>(
-                (method, msg) => '$method: $msg',
-              );
-          expect(log.$subLoggersCount, 2);
+          final subLog = log.withContext<String>(
+            'main',
+            (method, msg) => '$method: $msg',
+          );
+          expect(log.subLoggersCount, 1);
 
           if (vmAvailable) {
             final classInfo = await findClass(className);
@@ -1283,7 +1281,7 @@ void main() {
         } else {
           await forceGC(fullGcCycles: 2);
         }
-        expect(log.$subLoggersCount, 0);
+        expect(log.subLoggersCount, 0);
       });
     });
   });

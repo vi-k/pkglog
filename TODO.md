@@ -1,12 +1,5 @@
 # TODO
 
-- error и stackTrace именованнами параметрами
-
-- log.silent(() {
-  // Весь код здесь не будет логироваться
-  });
-  Надо ли?
-
 - Добавить в README секцию "Common Mistakes" с наглядными примерами:
   log.i('expensive: ${compute()}'); // плохо (вычисляется всегда)
   log.i(() => 'expensive: ${compute()}'); // хорошо
@@ -32,9 +25,6 @@
     /// Полная тишина
     static void silent(Logger log) => log.level = Level.off;
   }
-
-- $subLoggersCount: приватное поле с $ — выглядит как сгенерированный код.
-  Лучше _subLoggersCount или геттер.
 
 - Добавить в README раздел "Частые сценарии":
   Как логировать в файл (синхронно).

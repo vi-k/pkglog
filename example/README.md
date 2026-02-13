@@ -7,7 +7,7 @@ See also another example for a full demo:
 import 'package:pkglog/pkglog.dart';
 
 void main() {
-  final log = Logger('pkglog', minLevel: MinLevel.all);
+  final log = Logger('pkglog', level: LogLevel.all);
 
   print('\nDefaults:\n');
 
@@ -18,15 +18,13 @@ void main() {
   log.e('main', 'error');
   log.critical('main', 'critical');
 
-  print('\nCustom formatting:\n');
+  print('\nCustom building:\n');
 
-  log.format =
-      (level, package, source, message, error) => '[${level.shortName}]'
-          ' $package'
-          ' | ${DateTime.now()}'
-          ' | $source'
-          ' | $message'
-          '${error == null ? '' : ': $error'}';
+  log.builder = (msg) => '${DateTime.now()} [${msg.level.shortName}]'
+      ' ${msg.package}'
+      ' | ${msg.source}'
+      ' | ${msg.message}'
+      '${msg.error == null ? '' : ': ${msg.error}'}';
 
   log.v('main', 'verbose');
   log.d('main', 'debug');
@@ -37,18 +35,26 @@ void main() {
 
   print('\nOnly errors:\n');
 
-  log.minLevel = MinLevel.error;
+  log.level = LogLevel.error;
 
   log.v('main', 'verbose');
   log.d('main', 'debug');
   log.i('main', 'info');
   log.w('main', 'warning');
-  log.e('main', 'error', Exception('test')); // StackTrace.current
+  try {
+    throw Exception('test');
+  } on Object catch (error, stackTrace) {
+    log.e('main', 'error', error: error, stackTrace: stackTrace);
+  }
   try {
     throw StateError('test');
-  } on Object catch (error) {
-    // The stack trace will be taken from Error.
-    log.critical('main', 'critical', error);
+    // ignore: avoid_catching_errors
+  } on Error catch (error) {
+    log.critical(
+      'main',
+      'critical',
+      error: error, // The stack trace will be taken from `Error`.
+    );
   }
 }
 ```

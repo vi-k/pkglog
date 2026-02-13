@@ -4,10 +4,10 @@ part of '../logger.dart';
 sealed class SubLogger {
   final Logger _logger;
 
-  SubLogger._(this._logger, {required MinLevel level}) {
-    _setMinLevel(level);
+  SubLogger._(this._logger, {required LogLevel level}) {
+    _setLevel(level);
   }
 
   // ignore: avoid_setters_without_getters
-  void _setMinLevel(MinLevel value);
+  void _setLevel(LogLevel value);
 }

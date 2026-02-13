@@ -1,6 +1,7 @@
-## 0.2.0
+## 0.2.0-0.2.1
 
-- add tests, docs, write README
+- add tests, docs
+- update README
 - refactor
 - add scopes
 

@@ -35,3 +35,21 @@ final class LogMessage {
       ' $message'
       '${error == null ? '' : ': $error'}';
 }
+
+base mixin LogMessageWrapper<L extends Object> {
+  @protected
+  LogMessage get msg;
+
+  L get level;
+
+  String get package => msg.package;
+  Object? get unresolvedSource => msg.unresolvedSource;
+  String? get source => msg.source;
+  Object? get unresolvedMessage => msg.unresolvedMessage;
+  String get message => msg.message;
+  Object? get error => msg.error?.error;
+  StackTrace? get stackTrace => msg.error?.stackTrace;
+
+  @override
+  String toString() => msg.toString();
+}

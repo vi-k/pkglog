@@ -1,6 +1,7 @@
-## 0.2.2-0.2.3
+## 0.2.2-0.2.4
 
 - add LogLevel.values
+- add LogMessageWrapper
 
 ## 0.2.0-0.2.1
 

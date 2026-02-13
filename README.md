@@ -1,4 +1,4 @@
-<a href="https://github.com/vi-k/pkglog/actions"><img src="https://github.com/vi-k/pkglog/actions/workflows/dart.yml/badge.svg" alt="build"></a>
+[![Dart CI](https://github.com/vi-k/pkglog/actions/workflows/dart.yml/badge.svg)](https://github.com/vi-k/pkglog/actions/workflows/dart.yml)
 
 Принципиально минималистичный логер для библиотек.
 

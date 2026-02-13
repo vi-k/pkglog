@@ -34,6 +34,17 @@ abstract final class LogLevel {
   bool operator <=(LogLevel other) => index <= other.index;
   bool operator >(LogLevel other) => index > other.index;
   bool operator >=(LogLevel other) => index >= other.index;
+
+  /// Returns all logger levels: [verbose], [debug], [info], [warning],
+  /// [error], [critical]. Does not include [all] and [off].
+  static const List<LogLevel> values = [
+    verbose,
+    debug,
+    info,
+    warning,
+    error,
+    critical,
+  ];
 }
 
 @immutable

@@ -1,6 +1,6 @@
 name: pkglog
 description: A package providing logging functions to libraries.
-version: 0.2.2
+version: 0.2.3
 repository: https://github.com/vi-k/pkglog
 
 topics:

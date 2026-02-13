@@ -37,7 +37,7 @@ abstract final class LogLevel {
 
   /// Returns all logger levels: [verbose], [debug], [info], [warning],
   /// [error], [critical]. Does not include [all] and [off].
-  static const List<LogLevel> values = [
+  static const List<LoggerLevel> values = [
     verbose,
     debug,
     info,
